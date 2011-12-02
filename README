@@ -1,0 +1,14 @@
+# overlay
+
+A means to overlay modules and their xml config atop an existing JBoss
+AS7 instance
+
+## Usage
+
+None, yet
+
+## License
+
+Copyright (C) 2011 Jim Crossley
+
+Distributed under the Eclipse Public License, the same as Clojure.
