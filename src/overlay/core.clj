@@ -4,7 +4,7 @@
   (:require [clojure.contrib.lazy-xml :as lazy-xml])
   (:require [clojure.zip :as zip]))
 
-(declare overlay)
+(declare overlay-siblings)
 
 (defn zip-file [name]
   (zip/xml-zip (xml/parse (io/file name))))
@@ -12,33 +12,33 @@
 (defn zip-string [s]
   (zip/xml-zip (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
 
-(defn find-child [child parent pred]
+(defn xml-node-equal [n p]
+  (and (= (:tag n) (:tag p))
+       (= (:attrs n) (:attrs p))))
+
+(defn find-child [child {:keys [onto pred] :or {pred xml-node-equal}}]
   (let [target (zip/node child)]
-    (loop [cur (zip/down parent)]
+    (loop [cur (zip/down onto)]
       (cond
        (nil? cur) nil
        (pred target (zip/node cur)) cur
        :else (recur (zip/right cur))))))
 
-(defn overlay-child [child parent pred]
-  (let [found (find-child child parent pred)]
+(defn overlay-child [child {:keys [onto] :as args}]
+  (let [found (find-child child args)]
     (if found
-      (zip/up (overlay child found pred))
-      (zip/append-child parent (zip/node child)))))
+      (zip/up (overlay-siblings (zip/down child) (assoc args :onto found)))
+      (zip/append-child onto (zip/node child)))))
 
-(defn overlay-siblings [child parent pred]
+(defn overlay-siblings [child {:keys [onto] :as args}]
   (if (nil? child)
-    parent
-    (let [new-parent (overlay-child child parent pred)]
-      (recur (zip/right child) new-parent pred))))
+    onto
+    (let [parent (overlay-child child args)]
+      (recur (zip/right child) (assoc args :onto parent)))))
 
-(defn xml-node-equal [n p]
-  (and (= (:tag n) (:tag p))
-       (= (:attrs n) (:attrs p))))
-
-(defn overlay [src tgt & [pred]]
-  "Recursively overlay each child of src onto tgt"
-  (overlay-siblings (zip/down src) tgt (or pred xml-node-equal)))
+(defn overlay [src & {:keys [onto] :as args}]
+  "Recursively overlay on one zipper with the nodes of another"
+  (overlay-siblings (zip/down src) args))
 
 (defn stringify [zipper]
   (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
