@@ -32,12 +32,13 @@
     (let [new-parent (overlay-child child parent pred)]
       (recur (zip/right child) new-parent pred))))
 
-(defn eq [n p]
-  (and (= (:tag n) (:tag p)) (= (:attrs n) (:attrs p))))
+(defn xml-node-equal [n p]
+  (and (= (:tag n) (:tag p))
+       (= (:attrs n) (:attrs p))))
 
 (defn overlay [src tgt & [pred]]
   "Recursively overlay each child of src onto tgt"
-  (overlay-siblings (zip/down src) tgt (or pred eq)))
+  (overlay-siblings (zip/down src) tgt (or pred xml-node-equal)))
 
 (defn stringify [zipper]
   (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
