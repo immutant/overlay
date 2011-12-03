@@ -1,6 +1,7 @@
 (ns overlay.core
   (:require [clojure.java.io :as io])
   (:require [clojure.xml :as xml])
+  (:require [clojure.contrib.lazy-xml :as lazy-xml])
   (:require [clojure.zip :as zip]))
 
 (declare overlay)
@@ -22,7 +23,7 @@
 (defn overlay-child [child parent pred]
   (let [found (find-child child parent pred)]
     (if found
-      (zip/up (overlay child found))
+      (zip/up (overlay child found pred))
       (zip/append-child parent (zip/node child)))))
 
 (defn overlay-siblings [child parent pred]
@@ -30,7 +31,14 @@
     parent
     (let [new-parent (overlay-child child parent pred)]
       (recur (zip/right child) new-parent pred))))
-        
+
+(defn eq [n p]
+  (and (= (:tag n) (:tag p)) (= (:attrs n) (:attrs p))))
+
 (defn overlay [src tgt & [pred]]
   "Recursively overlay each child of src onto tgt"
-  (overlay-siblings (zip/down src) tgt (or pred =)))
+  (overlay-siblings (zip/down src) tgt (or pred eq)))
+
+(defn stringify [zipper]
+  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
+
