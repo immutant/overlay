@@ -12,6 +12,9 @@
 (defn zip-string [s]
   (zip/xml-zip (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
 
+(defn stringify [zipper]
+  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
+
 (defn xml-node-equal [n p]
   (and (= (:tag n) (:tag p))
        (= (:attrs n) (:attrs p))))
@@ -40,6 +43,4 @@
   "Recursively overlay on one zipper with the nodes of another"
   (overlay-siblings (zip/down src) args))
 
-(defn stringify [zipper]
-  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
 
