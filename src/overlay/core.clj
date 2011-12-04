@@ -30,11 +30,11 @@
       (zip/up (overlay-siblings (zip/down child) (assoc args :onto found)))
       (zip/append-child onto (zip/node child)))))
 
-(defn overlay-siblings [child {:keys [onto] :as args}]
-  (if (nil? child)
-    onto
-    (let [parent (overlay-child child args)]
-      (recur (zip/right child) (assoc args :onto parent)))))
+(defn overlay-siblings [child {:keys [onto ignore] :or {ignore #{}} :as args}]
+  (cond
+   (nil? child) onto
+   (ignore (zip/node child)) (recur (zip/right child) args)
+   :else (recur (zip/right child) (assoc args :onto (overlay-child child args)))))
 
 (defn overlay [src & {:keys [onto] :as args}]
   "Recursively overlay on one zipper with the nodes of another"
