@@ -1,6 +1,6 @@
-(ns overlay.test.core
+(ns overlay.test.xml
   (:require [clojure.zip :as zip])
-  (:use [overlay.core])
+  (:use [overlay.xml])
   (:use [clojure.test]))
 
 (deftest simple-element-overlay
