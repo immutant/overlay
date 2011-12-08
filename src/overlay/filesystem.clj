@@ -1,6 +1,15 @@
 (ns overlay.filesystem
   (:require [clojure.java.io :as io]))
 
+(defn delete-file-recursively
+  "rm -rf"
+  [f & [silently]]
+  (let [f (io/file f)]
+    (if (.isDirectory f)
+      (doseq [child (.listFiles f)]
+        (delete-file-recursively child silently)))
+    (io/delete-file f silently)))
+
 (defn relative
   "Return a File constructed with its path relative to a base path"
   [file base]

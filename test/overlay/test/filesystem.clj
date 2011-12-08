@@ -16,15 +16,6 @@
               (cons x c)))]
     (sort (map #(str (relative % dir)) (contents (io/file dir))))))
 
-(defn delete-file-recursively
-  "rm -rf"
-  [f & [silently]]
-  (let [f (io/file f)]
-    (if (.isDirectory f)
-      (doseq [child (.listFiles f)]
-        (delete-file-recursively child silently)))
-    (io/delete-file f silently)))
-
 (use-fixtures :each (fn [f] (delete-file-recursively output-dir :quietly) (f)))
 
 ;; (deftest no-output-dir
