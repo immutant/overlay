@@ -5,9 +5,16 @@
   (:require [overlay.xml :as xml])
   (:gen-class))
 
-(def immutant-latest-url "http://repository-torquebox.forge.cloudbees.com/incremental/immutant/LATEST/")
-(def torquebox-latest-url "http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/LATEST/")
+(def repository "http://repository-torquebox.forge.cloudbees.com")
 (def output-dir "target/")
+
+(defn incremental
+  "Return the correct URL for app, artifact, and version"
+  [app artifact & [version]]
+  (let [file (if (keyword? artifact)
+               (format "%s-dist-%s.zip" (name app) (name artifact))
+               artifact)]
+    (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
 
 (defn download [src dest]
   (println "Downloading" src)
@@ -26,55 +33,55 @@
           (.mkdirs file)
           (io/copy (.getInputStream zip entry) file))))))
 
+(defn extract-shell
+  "Attempts to shell out to 'unzip' command"
+  [archive dir]
+  (shell/sh "unzip" "-q" "-o""-d" (str dir) archive))
+
 (defn extract
-  "First attempts to shell out to 'unzip' command"
+  "Assumes the archive has a single top-level directory and returns its File"
   [archive dir]
   (println "Extracting" archive)
-  (try
-    (.mkdirs (io/file dir))
-    (shell/sh "unzip" "-q" "-o""-d" (str dir) archive)
-    (catch Throwable e
-      (extract-java archive dir))))
-
-(defn extract-top-level
-  "Assumes the archive has a single top-level directory and returns its name"
-  [archive dir]
-  (let [tmp (io/file dir ".overlay")]
-    (extract archive tmp)
+  (let [tmp (io/file dir ".vanilla-extract")]
+    (fs/delete-file-recursively tmp :quietly)
+    (.mkdirs tmp)
+    (try
+      (extract-shell archive tmp)
+      (catch Throwable e
+        (extract-java archive tmp)))
     (let [top (first (.listFiles tmp))
           target (io/file dir (.getName top))]
       (if (.exists target) (fs/delete-file-recursively target))
       (.renameTo top target)
       (.delete tmp)
+      (println "Extracted" (str target))
       target)))
 
 (defn download-and-extract [uri]
   (let [name (.getName (io/file uri))
         local (str output-dir name)]
     (download uri local)
-    (extract-top-level local output-dir)))
+    (extract local output-dir)))
     
 (defn latest []
-  (let [torquebox (download-and-extract (str torquebox-latest-url "torquebox-dist-bin.zip"))
-        modules (download-and-extract (str immutant-latest-url "immutant-dist-modules.zip"))]
+  (let [torquebox (download-and-extract (incremental :torquebox :bin))
+        modules (download-and-extract (incremental :immutant :modules))]
     (let [dir (io/file torquebox "jboss" "modules")]
       (println "Overlaying" (str dir))
       (fs/overlay modules dir))
     (let [file (io/file torquebox "jboss/standalone/configuration/standalone.xml")]
       (println "Overlaying" (str file))
       (io/copy (xml/stringify (xml/overlay
-                               (xml/zip-string (slurp (str immutant-latest-url "standalone.xml")))
+                               (xml/zip-string (slurp (incremental :immutant "standalone.xml")))
                                :onto (xml/zip-file file)
                                :ignore #(contains? #{:endpoint-config :virtual-server} (:tag %))))
                file))))
   
-;; overlay one directory over another (copy over jruby and share, if present)
-
 (defn -main [& args]
   ;; Avoid a 60s delay after this method completes
   (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
 
-  (println "Be patient! This could take a while...")
+  (println "This might take a while...")
   (println "Clearing" output-dir)
-  (fs/delete-file-recursively output-dir)
+  (fs/delete-file-recursively output-dir :quietly)
   (latest))
