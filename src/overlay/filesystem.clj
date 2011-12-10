@@ -13,7 +13,7 @@
 (defn relative
   "Return a File constructed with its path relative to a base path"
   [file base]
-  (io/file (.substring (.getPath file) (+ 1 (count base)))))
+  (io/file (.substring (.getPath file) (+ 1 (count (str base))))))
 
 (defn overlay
   "Overlay the contents of one directory onto another"

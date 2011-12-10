@@ -42,12 +42,11 @@
   (let [tmp (io/file dir ".overlay")]
     (extract archive tmp)
     (let [top (first (.listFiles tmp))
-          name (.getName top)
-          target (io/file dir name)]
+          target (io/file dir (.getName top))]
       (if (.exists target) (fs/delete-file-recursively target))
       (.renameTo top target)
       (.delete tmp)
-      name)))
+      target)))
 
 (defn download-and-extract [uri]
   (let [name (.getName (io/file uri))
@@ -57,11 +56,12 @@
     
 (defn latest []
   (let [torquebox (download-and-extract (str torquebox-latest-url "torquebox-dist-bin.zip"))
-        immutant (download-and-extract (str immutant-latest-url "immutant-dist-modules.zip"))]
-    (println "Overlaying modules")
-    (fs/overlay (str output-dir immutant) (str output-dir torquebox "/jboss/modules/org/immutant"))
-    (println "Overlaying standalone.xml")
-    (let [file (io/file (str output-dir torquebox "/jboss/standalone/configuration/standalone.xml"))]
+        modules (download-and-extract (str immutant-latest-url "immutant-dist-modules.zip"))]
+    (let [dir (io/file torquebox "jboss" "modules")]
+      (println "Overlaying" (str dir))
+      (fs/overlay modules dir))
+    (let [file (io/file torquebox "jboss/standalone/configuration/standalone.xml")]
+      (println "Overlaying" (str file))
       (io/copy (xml/stringify (xml/overlay
                                (xml/zip-string (slurp (str immutant-latest-url "standalone.xml")))
                                :onto (xml/zip-file file)
@@ -71,6 +71,10 @@
 ;; overlay one directory over another (copy over jruby and share, if present)
 
 (defn -main [& args]
+  ;; Avoid a 60s delay after this method completes
+  (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
+
   (println "Be patient! This could take a while...")
-  (fs/delete-file-recursively "target")
+  (println "Clearing" output-dir)
+  (fs/delete-file-recursively output-dir)
   (latest))
