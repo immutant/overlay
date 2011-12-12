@@ -86,8 +86,7 @@
   (apply overlay (layee "torquebox") (layer "immutant")))
 
 (defn usage []
-  ;; TODO: expand this
-  (println "Usage: lein run layee [layer]"))
+  (println (slurp "README.md")))
 
 (defn -main [& args]
   ;; Avoid a 60s delay after this method completes
