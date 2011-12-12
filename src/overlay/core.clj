@@ -52,7 +52,12 @@
   (let [sub (io/file dir "jboss")
         jboss (if (.exists sub) sub dir)]
     [(io/file jboss "modules") (io/file jboss "standalone/configuration/standalone.xml")]))
-    
+
+(defn artifact-spec
+  [spec]
+  (let [[app version] (split spec #"\W")]
+    [(keyword app) version]))
+  
 (defn overlay
   [dir modules config]
   (let [[these-modules this-config] (find-modules-and-config dir)]
@@ -64,8 +69,7 @@
   (let [dir (io/file spec)]
     (if (.exists dir)
       (find-modules-and-config dir)
-      (let [[app version] (split spec #"\W")
-            app (keyword app)]
+      (let [[app version] (artifact-spec spec)]
         (if (contains? overlayable-apps app)
           [(download-and-extract (incremental app :modules version)),
            (incremental app "standalone.xml")]
@@ -76,8 +80,7 @@
   (let [dir (io/file spec)]
     (if (.exists dir)
       dir
-      (let [[app version] (split spec #"\W")
-            app (keyword app)]
+      (let [[app version] (artifact-spec spec)]
         (if (contains? overlayable-apps app)
           (download-and-extract (incremental app :bin version))
           (download-and-extract spec))))))
