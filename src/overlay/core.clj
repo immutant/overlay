@@ -60,34 +60,41 @@
     (overlay-config this-config config)))
 
 (defn layer
-  [descriptor]
-  (let [dir (io/file descriptor)]
+  [spec]
+  (let [dir (io/file spec)]
     (if (.exists dir)
       (find-modules-and-config dir)
-      (let [[app version] (split descriptor #"\W")
+      (let [[app version] (split spec #"\W")
             app (keyword app)]
         (if (contains? overlayable-apps app)
           [(download-and-extract (incremental app :modules version)),
            (incremental app "standalone.xml")]
-          (layer (download-and-extract descriptor)))))))
+          (layer (download-and-extract spec)))))))
 
 (defn layee
-  [descriptor]
-  (let [dir (io/file descriptor)]
+  [spec]
+  (let [dir (io/file spec)]
     (if (.exists dir)
       dir
-      (let [[app version] (split descriptor #"\W")
+      (let [[app version] (split spec #"\W")
             app (keyword app)]
         (if (contains? overlayable-apps app)
           (download-and-extract (incremental app :bin version))
-          (download-and-extract descriptor))))))
+          (download-and-extract spec))))))
   
 (defn latest []
   (apply overlay (layee "torquebox") (layer "immutant")))
 
+(defn usage []
+  ;; TODO: expand this
+  (println "Usage: lein run layee [layer]"))
+
 (defn -main [& args]
   ;; Avoid a 60s delay after this method completes
   (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
-
-  (apply overlay (layee (first args)) (layer (second args))))
+  (if (empty? args)
+    (usage)
+    (let [target (layee (first args))
+          source (second args)]
+      (and source (apply overlay target (layer source))))))
 
