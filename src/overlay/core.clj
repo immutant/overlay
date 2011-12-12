@@ -3,10 +3,13 @@
   (:require [clojure.java.shell :as shell])
   (:require [overlay.filesystem :as fs])
   (:require [overlay.xml :as xml])
+  (:use [overlay.extract :only [extract]])
+  (:use [clojure.string :only [split]])
   (:gen-class))
 
 (def repository "http://repository-torquebox.forge.cloudbees.com")
 (def output-dir "target/")
+(def overlayable-apps #{:immutant :torquebox})
 
 (defn incremental
   "Return the correct URL for app, artifact, and version"
@@ -23,65 +26,68 @@
               output (io/output-stream dest)]
     (io/copy input output)))
 
-(defn extract-java
-  "Multi-platform, but won't preserve unix file permissions"
-  [archive dir]
-  (with-open [zip (java.util.zip.ZipFile. archive)] 
-    (doseq [entry (enumeration-seq (.entries zip))]
-      (let [file (io/file dir (.getName entry))]
-        (if (.isDirectory entry)
-          (.mkdirs file)
-          (io/copy (.getInputStream zip entry) file))))))
-
-(defn extract-shell
-  "Attempts to shell out to 'unzip' command"
-  [archive dir]
-  (shell/sh "unzip" "-q" "-o""-d" (str dir) archive))
-
-(defn extract
-  "Assumes the archive has a single top-level directory and returns its File"
-  [archive dir]
-  (println "Extracting" archive)
-  (let [tmp (io/file dir ".vanilla-extract")]
-    (fs/delete-file-recursively tmp :quietly)
-    (.mkdirs tmp)
-    (try
-      (extract-shell archive tmp)
-      (catch Throwable e
-        (extract-java archive tmp)))
-    (let [top (first (.listFiles tmp))
-          target (io/file dir (.getName top))]
-      (if (.exists target) (fs/delete-file-recursively target))
-      (.renameTo top target)
-      (.delete tmp)
-      (println "Extracted" (str target))
-      target)))
-
-(defn download-and-extract [uri]
+(defn download-and-extract [uri & [dir]]
   (let [name (.getName (io/file uri))
-        local (str output-dir name)]
-    (download uri local)
-    (extract local output-dir)))
-    
-(defn latest []
-  (let [torquebox (download-and-extract (incremental :torquebox :bin))
-        modules (download-and-extract (incremental :immutant :modules))]
-    (let [dir (io/file torquebox "jboss" "modules")]
-      (println "Overlaying" (str dir))
-      (fs/overlay modules dir))
-    (let [file (io/file torquebox "jboss/standalone/configuration/standalone.xml")]
-      (println "Overlaying" (str file))
-      (io/copy (xml/stringify (xml/overlay
-                               (xml/zip-string (slurp (incremental :immutant "standalone.xml")))
-                               :onto (xml/zip-file file)
-                               :ignore #(contains? #{:endpoint-config :virtual-server} (:tag %))))
-               file))))
+        file (io/file (or dir output-dir) name)]
+    (download uri file)
+    (extract file (.getParentFile file))))
+
+(defn overlay-modules
+  [dir modules]
+  (println "Overlaying" (str dir))
+  (fs/overlay modules dir))
   
+(defn overlay-config
+  [file config]
+  (println "Overlaying" (str file))
+  (io/copy (xml/stringify
+            (xml/overlay
+             (xml/zip-string (slurp config))
+             :onto (xml/zip-file file)
+             :ignore #(contains? #{:endpoint-config :virtual-server} (:tag %))))
+           file))
+
+(defn find-modules-and-config
+  [dir]
+  (let [sub (io/file dir "jboss")
+        jboss (if (.exists sub) sub dir)]
+    [(io/file jboss "modules") (io/file jboss "standalone/configuration/standalone.xml")]))
+    
+(defn overlay
+  [dir modules config]
+  (let [[these-modules this-config] (find-modules-and-config dir)]
+    (overlay-modules these-modules modules)
+    (overlay-config this-config config)))
+
+(defn layer
+  [descriptor]
+  (let [dir (io/file descriptor)]
+    (if (.exists dir)
+      (find-modules-and-config dir)
+      (let [[app version] (split descriptor #"\W")
+            app (keyword app)]
+        (if (contains? overlayable-apps app)
+          [(download-and-extract (incremental app :modules version)),
+           (incremental app "standalone.xml")]
+          (layer (download-and-extract descriptor)))))))
+
+(defn layee
+  [descriptor]
+  (let [dir (io/file descriptor)]
+    (if (.exists dir)
+      dir
+      (let [[app version] (split descriptor #"\W")
+            app (keyword app)]
+        (if (contains? overlayable-apps app)
+          (download-and-extract (incremental app :bin version))
+          (download-and-extract descriptor))))))
+  
+(defn latest []
+  (apply overlay (layee "torquebox") (layer "immutant")))
+
 (defn -main [& args]
   ;; Avoid a 60s delay after this method completes
   (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
 
-  (println "This might take a while...")
-  (println "Clearing" output-dir)
-  (fs/delete-file-recursively output-dir :quietly)
-  (latest))
+  (apply overlay (layee (first args)) (layer (second args))))
+
