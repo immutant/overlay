@@ -10,6 +10,7 @@
 (def repository "http://repository-torquebox.forge.cloudbees.com")
 (def output-dir "target/")
 (def overlayable-apps #{:immutant :torquebox})
+(def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server})
 
 (defn incremental
   "Return the correct URL for app, artifact, and version"
@@ -44,7 +45,7 @@
             (xml/overlay
              (xml/zip-string (slurp config))
              :onto (xml/zip-file file)
-             :ignore #(contains? #{:endpoint-config :virtual-server} (:tag %))))
+             :ignore #(contains? ignorable-elements (:tag %))))
            file))
 
 (defn find-modules-and-config
