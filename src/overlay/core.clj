@@ -34,9 +34,9 @@
     (extract file (.getParentFile file))))
 
 (defn overlay-modules
-  [dir modules]
+  [dir modules & [force]]
   (println "Overlaying" (str dir))
-  (fs/overlay modules dir))
+  (fs/overlay modules dir force))
   
 (defn overlay-config
   [file config]
@@ -60,9 +60,9 @@
     [(keyword app) version]))
   
 (defn overlay
-  [dir modules config]
+  [dir modules config & [force]]
   (let [[these-modules this-config] (find-modules-and-config dir)]
-    (overlay-modules these-modules modules)
+    (overlay-modules these-modules modules force)
     (overlay-config this-config config)))
 
 (defn layer
@@ -86,9 +86,6 @@
           (download-and-extract (incremental app :bin version))
           (download-and-extract spec))))))
   
-(defn latest []
-  (apply overlay (layee "torquebox") (layer "immutant")))
-
 (defn usage []
   (println (slurp "README.md")))
 

@@ -17,12 +17,13 @@
 
 (defn overlay
   "Overlay the contents of one directory onto another"
-  [src tgt]
+  [src tgt & [overwrite]]
   (letfn [(visit [dir]
             (doseq [here (.listFiles dir)]
               (let [there (io/file tgt (relative here src))]
                 (if (.isDirectory here)
                   (do (.mkdir there) (visit here))
-                  (io/copy here there)))))]
+                  (if (or overwrite (not (.exists there)))
+                    (io/copy here there))))))]
     (.mkdirs (io/file tgt))
     (visit (io/file src))))
