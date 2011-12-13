@@ -1,19 +1,35 @@
 (ns overlay.test.xml
   (:require [clojure.zip :as zip])
+  (:require [clojure.string :as str])
   (:use [overlay.xml])
   (:use [clojure.test]))
+
+(defn pretty [z]
+  (str/replace (stringify z) #"\s" ""))
 
 (deftest simple-element-overlay
   (let [z1 (zip-string "<root><a/></root>")
         z2 (zip-string "<root><a/><b/></root>")
         ov (overlay z2 :onto z1)]
-    (is (= (zip/root ov) (zip/root z2)))))
+    (is (= (pretty z2) (pretty ov)))))
 
 (deftest element-overlay-with-predicate
   (let [z1 (zip-string "<root><a/></root>")
         z2 (zip-string "<root><a/><b/></root>")
         ov (overlay z2 :onto z1 :pred =)]
-    (is (= (zip/root ov) (zip/root z2)))))
+    (is (= (pretty z2) (pretty ov)))))
+
+(deftest element-insert-before
+  (let [z1 (zip-string "<root><b/></root>")
+        z2 (zip-string "<root><a/><b/></root>")
+        ov (overlay z2 :onto z1)]
+    (is (= (pretty z2) (pretty ov)))))
+
+(deftest element-insert-middle
+  (let [z1 (zip-string "<root><a/><c/></root>")
+        z2 (zip-string "<root><a/><b/><c/></root>")
+        ov (overlay z2 :onto z1)]
+    (is (= (pretty z2) (pretty ov)))))
 
 (deftest file-overlay
   (let [i (zip-file "test-resources/standalone-immutant.xml")

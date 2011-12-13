@@ -19,7 +19,7 @@
 (defn stringify
   "Pretty print an xml zipper"
   [zipper]
-  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 2)))
+  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 4)))
 
 (defn xml-node-equal
   "Ignore the content attribute of XML nodes"
@@ -29,8 +29,7 @@
 
 (defn find-child
   "Find a matching child among the children of the overlay-ee"
-  [child {:keys [onto pred] :or {pred
-  xml-node-equal}}]
+  [child {:keys [onto pred] :or {pred xml-node-equal}}]
   (let [target (zip/node child)]
     (loop [cur (zip/down onto)]
       (cond
@@ -38,14 +37,24 @@
        (pred target (zip/node cur)) cur
        :else (recur (zip/right cur))))))
 
+(defn insert-child
+  "The child must be inserted relative to its source siblings"
+  [child {:keys [onto] :as args}]
+  (loop [sibling (zip/left child)]
+    (if (nil? sibling)
+      (zip/insert-child onto (zip/node child))
+      (if-let [found (find-child sibling args)]
+        (zip/up (zip/insert-right found (zip/node child)))
+        (recur (zip/left sibling))))))  
+
 (defn overlay-child
   "If matching child found, recursively overlay its
-   children. Otherwise append the child onto the overlay-ee."
+   children. Otherwise, add the child onto the overlay-ee."
   [child {:keys [onto] :as args}]
   (let [found (find-child child args)]
     (if found
       (zip/up (overlay-siblings (zip/down child) (assoc args :onto found)))
-      (zip/append-child onto (zip/node child)))))
+      (insert-child child args))))
 
 (defn overlay-siblings
   "Overlay each sibling of the child onto the target"
