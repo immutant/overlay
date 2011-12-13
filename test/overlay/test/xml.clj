@@ -36,4 +36,4 @@
         t (zip-file "test-resources/standalone-torquebox.xml")
         expect (zip-file "test-resources/standalone-overlaid.xml")
         ov (overlay i :onto t :ignore #(= (:tag %) :endpoint-config))]
-    (is (= (zip/root expect) (zip/root ov)))))
+    (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
