@@ -25,7 +25,14 @@
   "Ignore the content attribute of XML nodes"
   [n p]
   (and (= (:tag n) (:tag p))
-       (= (:attrs n) (:attrs p))))
+       (let [src (:attrs n) tgt (:attrs p)]
+         (every? (fn [[k v]] (= v (k src))) tgt))))
+
+(defn xml-node-replace
+  [node loc]
+  (if (:attrs node)
+    (assoc node :attrs (:attrs (zip/node loc)))
+    node))
 
 (defn find-child
   "Find a matching child among the children of the overlay-ee"
@@ -51,10 +58,9 @@
   "If matching child found, recursively overlay its
    children. Otherwise, add the child onto the overlay-ee."
   [child {:keys [onto] :as args}]
-  (let [found (find-child child args)]
-    (if found
-      (zip/up (overlay-siblings (zip/down child) (assoc args :onto found)))
-      (insert-child child args))))
+  (if-let [found (find-child child args)]
+    (zip/up (overlay-siblings (zip/down child) (assoc args :onto (zip/edit found xml-node-replace child))))
+    (insert-child child args)))
 
 (defn overlay-siblings
   "Overlay each sibling of the child onto the target"
