@@ -34,9 +34,9 @@
     (extract file (.getParentFile file))))
 
 (defn overlay-modules
-  [dir modules & [force]]
+  [dir modules]
   (println "Overlaying" (str dir))
-  (fs/overlay modules dir force))
+  (fs/overlay modules dir))
   
 (defn overlay-config
   [file config]
@@ -60,9 +60,9 @@
     [(keyword app) version]))
   
 (defn overlay
-  [dir modules config & [force]]
+  [dir modules config]
   (let [[these-modules this-config] (find-modules-and-config dir)]
-    (overlay-modules these-modules modules force)
+    (overlay-modules these-modules modules)
     (overlay-config this-config config)))
 
 (defn layer
