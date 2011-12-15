@@ -15,7 +15,7 @@ layee, i.e. the first param.
 It is convenient to download and extract a specific distribution by
 simply omitting the second param.
 
-All results will reside beneath target/.
+Anything downloaded will be extracted beneath target/.
 
 The specifications of layee and layer may be one of the following:
 
