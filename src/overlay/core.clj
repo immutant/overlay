@@ -79,7 +79,7 @@
         (recur (download-and-extract uri))))))
 
 (defn overlay
-  [target source]
+  [target & [source]]
   (let [layee (path target)]
     (when source
       (let [layer (path source)
