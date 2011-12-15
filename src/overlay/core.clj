@@ -58,13 +58,8 @@
   (let [[app version] (split spec #"\W")]
     [(keyword app) version]))
   
-(defn overlay
-  [dir modules config]
-  (let [[these-modules this-config] (find-modules-and-config dir)]
-    (overlay-modules these-modules modules)
-    (overlay-config this-config config)))
-
 (defn layer
+  "Returns a 2-element tuple of modules path and config path to overlay"
   [spec]
   (let [dir (io/file spec)]
     (if (.exists dir)
@@ -76,6 +71,7 @@
           (layer (download-and-extract spec)))))))
 
 (defn layee
+  "Returns the path to the distro being overlaid"
   [spec]
   (let [dir (io/file spec)]
     (if (.exists dir)
@@ -84,6 +80,16 @@
         (if (contains? overlayable-apps app)
           (download-and-extract (incremental app :bin version))
           (download-and-extract spec))))))
+
+(defn overlay
+  ([target source]
+     (if source
+       (apply overlay (layee target) (layer source))
+       (layee target)))  
+  ([dir modules config]
+     (let [[these-modules this-config] (find-modules-and-config dir)]
+       (overlay-modules these-modules modules)
+       (overlay-config this-config config))))
   
 (defn usage []
   (println (slurp "README.md")))
@@ -93,7 +99,6 @@
   (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
   (if (empty? args)
     (usage)
-    (let [target (layee (first args))
-          source (second args)]
-      (and source (apply overlay target (layer source))))))
+    (overlay (first args) (second args)))
+  nil)
 
