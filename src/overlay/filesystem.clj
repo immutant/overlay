@@ -23,7 +23,8 @@
               (let [there (io/file tgt (relative here src))]
                 (if (.isDirectory here)
                   (do (.mkdir there) (visit here))
-                  (if (or overwrite (not (.exists there)))
-                    (io/copy here there))))))]
+                  (when (or overwrite (not (.exists there)))
+                    (io/copy here there)
+                    (if (.canExecute here) (.setExecutable there true)))))))]
     (.mkdirs (io/file tgt))
     (visit (io/file src))))
