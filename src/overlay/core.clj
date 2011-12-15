@@ -48,6 +48,7 @@
            file))
 
 (defn find-modules-and-config
+  "Returns a 2-element tuple [modules-path, config-path] to overlay"
   [dir]
   (let [sub (io/file dir "jboss")
         jboss (if (.exists sub) sub dir)]
@@ -57,29 +58,27 @@
   [spec]
   (let [[app version] (split spec #"\W")]
     [(keyword app) version]))
-  
-(defn layer
-  "Returns a 2-element tuple of modules path and config path to overlay"
-  [spec]
+
+(defn resolve-layer
+  [spec result-fn]
   (let [dir (io/file spec)]
     (if (.exists dir)
-      (find-modules-and-config dir)
-      (let [[app version] (artifact-spec spec)]
-        (if (contains? overlayable-apps app)
-          [(download-and-extract (incremental app :modules version)),
-           (incremental app "standalone.xml")]
-          (layer (download-and-extract spec)))))))
+      (result-fn dir)
+      (let [[app version] (artifact-spec spec)
+            uri (if (contains? overlayable-apps app)
+                  (incremental app :bin version)
+                  spec)]
+        (recur (download-and-extract uri) result-fn)))))
+
+(defn layer
+  "Returns a [modules config] tuple from the overlaying distro"
+  [spec]
+  (resolve-layer spec find-modules-and-config))
 
 (defn layee
   "Returns the path to the distro being overlaid"
   [spec]
-  (let [dir (io/file spec)]
-    (if (.exists dir)
-      dir
-      (let [[app version] (artifact-spec spec)]
-        (if (contains? overlayable-apps app)
-          (download-and-extract (incremental app :bin version))
-          (download-and-extract spec))))))
+  (resolve-layer spec identity))
 
 (defn overlay
   ([target source]
