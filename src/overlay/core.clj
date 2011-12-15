@@ -59,36 +59,26 @@
   (let [[app version] (split spec #"\W")]
     [(keyword app) version]))
 
-(defn resolve-layer
-  [spec result-fn]
+(defn path
+  [spec]
   (let [dir (io/file spec)]
     (if (.exists dir)
-      (result-fn dir)
+      dir
       (let [[app version] (artifact-spec spec)
             uri (if (contains? overlayable-apps app)
                   (incremental app :bin version)
                   spec)]
-        (recur (download-and-extract uri) result-fn)))))
-
-(defn layer
-  "Returns a [modules config] tuple from the overlaying distro"
-  [spec]
-  (resolve-layer spec find-modules-and-config))
-
-(defn layee
-  "Returns the path to the distro being overlaid"
-  [spec]
-  (resolve-layer spec identity))
+        (recur (download-and-extract uri))))))
 
 (defn overlay
-  ([target source]
-     (if source
-       (apply overlay (layee target) (layer source))
-       (layee target)))  
-  ([dir modules config]
-     (let [[these-modules this-config] (find-modules-and-config dir)]
-       (overlay-modules these-modules modules)
-       (overlay-config this-config config))))
+  [target source]
+  (let [layee (path target)]
+    (when source
+      (let [layer (path source)
+            [these-modules this-config] (find-modules-and-config layee)
+            [those-modules that-config] (find-modules-and-config layer)]
+        (overlay-modules these-modules those-modules)
+        (overlay-config this-config that-config)))))
   
 (defn usage []
   (println (slurp "README.md")))
