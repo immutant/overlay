@@ -32,10 +32,10 @@
     (download uri file)
     (extract file (.getParentFile file))))
 
-(defn overlay-modules
-  [dir modules]
-  (println "Overlaying" (str dir))
-  (fs/overlay modules dir))
+(defn overlay-dir
+  [target source]
+  (println "Overlaying" (str target))
+  (fs/overlay source target))
   
 (defn overlay-config
   [file config]
@@ -46,6 +46,14 @@
              :onto (xml/zip-file file)
              :ignore #(contains? ignorable-elements (:tag %))))
            file))
+
+(defn overlay-extra
+  [to from]
+  (when (.exists (io/file from "jboss"))
+    (doseq [dir (.listFiles (io/file from))]
+      (let [name (.getName dir)]
+        (if-not (= name "jboss")
+          (overlay-dir (io/file to name) dir))))))
 
 (defn find-modules-and-config
   "Returns a 2-element tuple [modules-path, config-path] to overlay"
@@ -77,8 +85,9 @@
       (let [layer (path source)
             [these-modules this-config] (find-modules-and-config layee)
             [those-modules that-config] (find-modules-and-config layer)]
-        (overlay-modules these-modules those-modules)
-        (overlay-config this-config that-config)))))
+        (overlay-dir these-modules those-modules)
+        (overlay-config this-config that-config)
+        (overlay-extra layee layer)))))
   
 (defn usage []
   (println (slurp "README.md")))
