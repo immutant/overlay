@@ -30,7 +30,7 @@
       (:dist_size (json/read-json (slurp r))))
     (catch Exception e
       nil)))
-  
+
 (defn filesize
   "Try to determine filesize of the artifact specified by src."
   [src]
@@ -46,17 +46,22 @@
     (with-open [in (io/input-stream src)]
       (io/copy in dest))))
 
-(defn download-and-extract [uri & [dir]]
-  (let [name (.getName (io/file uri))
-        file (io/file (or dir output-dir) name)]
-    (download uri file)
-    (extract file (.getParentFile file))))
+(defn download-and-extract
+  ([uri]
+     (download-and-extract uri nil nil))
+  ([uri artifact-dir]
+     (download-and-extract uri artifact-dir nil))
+  ([uri artifact-dir extract-dir]
+     (let [name (.getName (io/file uri))
+           file (io/file (or artifact-dir output-dir) name)]
+       (download uri file)
+       (extract file (or extract-dir (.getParentFile file))))))
 
 (defn overlay-dir
   [target source]
   (println "Overlaying" (str target))
   (fs/overlay source target))
-  
+
 (defn overlay-config
   [file config]
   (println "Overlaying" (str file))
@@ -108,7 +113,7 @@
         (overlay-dir these-modules those-modules)
         (overlay-config this-config that-config)
         (overlay-extra layee layer)))))
-  
+
 (defn usage []
   (println (slurp "README.md")))
 
@@ -119,4 +124,3 @@
     (usage)
     (overlay (first args) (second args)))
   nil)
-
