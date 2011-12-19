@@ -3,7 +3,7 @@
   (:require [clojure.java.shell :as shell])
   (:require [overlay.filesystem :as fs])
   (:require [overlay.xml :as xml])
-  (:require [dl.download :as dl])
+  (:require [progress.file :as progress])
   (:use [overlay.extract :only [extract]])
   (:use [clojure.string :only [split]])
   (:gen-class))
@@ -24,7 +24,9 @@
 (defn download [src dest]
   (println "Downloading" src)
   (.mkdirs (.getParentFile (io/file dest)))
-  (dl/download src dest))
+  (progress/with-file-progress dest
+    (with-open [in (io/input-stream src)]
+      (io/copy in dest))))
 
 (defn download-and-extract [uri & [dir]]
   (let [name (.getName (io/file uri))
