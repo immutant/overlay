@@ -1,11 +1,12 @@
 (ns overlay.core
-  (:require [clojure.java.io :as io])
-  (:require [clojure.java.shell :as shell])
-  (:require [overlay.filesystem :as fs])
-  (:require [overlay.xml :as xml])
-  (:require [progress.file :as progress])
-  (:use [overlay.extract :only [extract]])
-  (:use [clojure.string :only [split]])
+  (:require [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
+            [clojure.data.json :as json]
+            [overlay.filesystem :as fs]
+            [overlay.xml :as xml]
+            [progress.file :as progress])
+  (:use [overlay.extract :only [extract]]
+        [clojure.string :only [split]])
   (:gen-class))
 
 (def repository "http://repository-torquebox.forge.cloudbees.com")
@@ -21,10 +22,27 @@
                artifact)]
     (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
 
+(defn dist-filesize
+  "Try to determine artifact size from build-metadata.json."
+  [url]
+  (try
+    (with-open [r (io/reader (.replaceFirst url "/[^/]*-dist-.*\\.zip$" "/build-metadata.json"))]
+      (:dist_size (json/read-json (slurp r))))
+    (catch Exception e
+      nil)))
+  
+(defn filesize
+  "Try to determine filesize of the artifact specified by src."
+  [src]
+  (let [f (io/file src)]
+    (if (.exists f)
+      (.length f)
+      (dist-filesize src))))
+
 (defn download [src dest]
   (println "Downloading" src)
   (.mkdirs (.getParentFile (io/file dest)))
-  (progress/with-file-progress dest
+  (progress/with-file-progress dest :filesize (filesize src)
     (with-open [in (io/input-stream src)]
       (io/copy in dest))))
 
