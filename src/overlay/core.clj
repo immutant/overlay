@@ -22,14 +22,21 @@
                artifact)]
     (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
 
+(defn metadata-url
+  "Return the metadata url, but only for full binary distributions"
+  [url]
+  (if (.endsWith url "dist-bin.zip")
+    (.replaceFirst url "/[^/]*$" "/build-metadata.json")))
+
 (defn dist-filesize
   "Try to determine artifact size from build-metadata.json."
   [url]
-  (try
-    (with-open [r (io/reader (.replaceFirst url "/[^/]*-dist-.*\\.zip$" "/build-metadata.json"))]
-      (:dist_size (json/read-json (slurp r))))
-    (catch Exception e
-      nil)))
+  (if-let [metadata (metadata-url url)]
+    (try
+      (with-open [r (io/reader metadata)]
+        (:dist_size (json/read-json (slurp r))))
+      (catch Exception e
+        nil))))
 
 (defn filesize
   "Try to determine filesize of the artifact specified by src."
