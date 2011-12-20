@@ -9,8 +9,14 @@
         [clojure.string :only [split]])
   (:gen-class))
 
+(def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
+       :dynamic true}
+  *output-dir* (io/file "target"))
+(def ^{:doc "The dir where artifacts will be extracted. If nil, *output-dir* is used as a fallback. Root binding is nil"
+       :dynamic true}
+  *extract-dir* nil)
+
 (def repository "http://repository-torquebox.forge.cloudbees.com")
-(def output-dir "target/")
 (def overlayable-apps #{:immutant :torquebox})
 (def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server})
 
@@ -54,15 +60,11 @@
       (io/copy in dest))))
 
 (defn download-and-extract
-  ([uri]
-     (download-and-extract uri nil nil))
-  ([uri artifact-dir]
-     (download-and-extract uri artifact-dir nil))
-  ([uri artifact-dir extract-dir]
-     (let [name (.getName (io/file uri))
-           file (io/file (or artifact-dir output-dir) name)]
-       (download uri file)
-       (extract file (or extract-dir (.getParentFile file))))))
+  [uri]
+  (let [name (.getName (io/file uri))
+        file (io/file *output-dir* name)]
+    (download uri file)
+    (extract file (or *extract-dir* *output-dir*))))
 
 (defn overlay-dir
   [target source]
