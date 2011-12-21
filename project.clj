@@ -1,5 +1,5 @@
-(defproject org.immutant/overlay "1.0.1"
-  :description "Overlays modules from one JBoss AS7 installation onto another"
+(defproject org.immutant/overlay "1.0.2"
+  :description "Overlays features from one JBoss AS7 installation onto another"
   :url "http://github.com/immutant/overlay"
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [org.clojure/clojure-contrib "1.2.0"]

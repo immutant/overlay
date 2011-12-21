@@ -3,10 +3,10 @@
             [clojure.java.shell :as shell]
             [clojure.data.json :as json]
             [overlay.filesystem :as fs]
+            [overlay.extract :as ex]
             [overlay.xml :as xml]
             [progress.file :as progress])
-  (:use [overlay.extract :only [extract]]
-        [clojure.string :only [split]])
+  (:use [clojure.string :only [split]])
   (:gen-class))
 
 (def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
@@ -59,12 +59,15 @@
     (with-open [in (io/input-stream src)]
       (io/copy in dest))))
 
+(defn extract [archive]
+  (ex/extract archive (or *extract-dir* *output-dir*)))
+
 (defn download-and-extract
   [uri]
   (let [name (.getName (io/file uri))
         file (io/file *output-dir* name)]
     (download uri file)
-    (extract file (or *extract-dir* *output-dir*))))
+    (extract file)))
 
 (defn overlay-dir
   [target source]
@@ -103,9 +106,11 @@
 
 (defn path
   [spec]
-  (let [dir (io/file spec)]
-    (if (.exists dir)
-      dir
+  (let [file (io/file spec)]
+    (if (.exists file)
+      (if (.isDirectory file)
+        file
+        (recur (extract file)))
       (let [[app version] (artifact-spec spec)
             uri (if (contains? overlayable-apps app)
                   (incremental app :bin version)
