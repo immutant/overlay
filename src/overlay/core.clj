@@ -16,7 +16,7 @@
        :dynamic true}
   *extract-dir* nil)
 
-(def repository "http://repository-torquebox.forge.cloudbees.com")
+(def repository "http://repository-projectodd.forge.cloudbees.com")
 (def overlayable-apps #{:immutant :torquebox})
 (def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server})
 
