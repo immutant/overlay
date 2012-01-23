@@ -19,6 +19,10 @@
 (def repository "http://repository-projectodd.forge.cloudbees.com")
 (def overlayable-apps #{:immutant :torquebox})
 (def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server})
+(def config-files ["standalone/configuration/standalone.xml"
+                   "standalone/configuration/standalone-ha.xml"
+                   "standalone/configuration/standalone-full.xml"
+                   "domain/configuration/domain.xml"])
 
 (defn incremental
   "Return the correct URL for app, artifact, and version"
@@ -75,14 +79,17 @@
   (fs/overlay source target))
 
 (defn overlay-config
-  [file config]
-  (println "Overlaying" (str file))
-  (io/copy (xml/stringify
-            (xml/overlay
-             (xml/zip-string (slurp config))
-             :onto (xml/zip-file file)
-             :ignore #(contains? ignorable-elements (:tag %))))
-           file))
+  [to from]
+  (doseq [cfg config-files]
+    (let [config (io/file from cfg)
+          file (io/file to cfg)]
+      (println "Overlaying" (str file))
+      (io/copy (xml/stringify
+                (xml/overlay
+                 (xml/zip-file config)
+                 :onto (xml/zip-file file)
+                 :ignore #(contains? ignorable-elements (:tag %))))
+               file))))
 
 (defn overlay-extra
   [to from]
@@ -92,12 +99,10 @@
         (if-not (= name "jboss")
           (overlay-dir (io/file to name) dir))))))
 
-(defn find-modules-and-config
-  "Returns a 2-element tuple [modules-path, config-path] to overlay"
+(defn jboss-dir
   [dir]
-  (let [sub (io/file dir "jboss")
-        jboss (if (.exists sub) sub dir)]
-    [(io/file jboss "modules") (io/file jboss "standalone/configuration/standalone.xml")]))
+  (let [sub (io/file dir "jboss")]
+    (if (.exists sub) sub dir)))
 
 (defn artifact-spec
   [spec]
@@ -122,10 +127,10 @@
   (let [layee (path target)]
     (when source
       (let [layer (path source)
-            [these-modules this-config] (find-modules-and-config layee)
-            [those-modules that-config] (find-modules-and-config layer)]
-        (overlay-dir these-modules those-modules)
-        (overlay-config this-config that-config)
+            this-jboss (jboss-dir layee)
+            that-jboss (jboss-dir layer)]
+        (overlay-dir (io/file this-jboss "modules") (io/file that-jboss "modules"))
+        (overlay-config this-jboss that-jboss)
         (overlay-extra layee layer)))))
 
 (defn usage []
