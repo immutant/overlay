@@ -137,9 +137,8 @@
   (println (slurp "README.md")))
 
 (defn -main [& args]
-  ;; Avoid a 60s delay after this method completes
-  (.setKeepAliveTime clojure.lang.Agent/soloExecutor 100 java.util.concurrent.TimeUnit/MILLISECONDS)
   (if (empty? args)
     (usage)
     (overlay (first args) (second args)))
+  (shutdown-agents)
   nil)
