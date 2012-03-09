@@ -6,8 +6,7 @@
             [overlay.extract :as ex]
             [overlay.xml :as xml]
             [progress.file :as progress])
-  (:use [clojure.string :only [split]])
-  (:gen-class))
+  (:use [clojure.string :only [split]]))
 
 (def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
        :dynamic true}
@@ -152,10 +151,3 @@
 
 (defn usage []
   (println (slurp "README.md")))
-
-(defn -main [& args]
-  (if (empty? args)
-    (usage)
-    (overlay (first args) (second args)))
-  (shutdown-agents)
-  nil)

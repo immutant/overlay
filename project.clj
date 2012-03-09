@@ -6,4 +6,4 @@
                  [org.clojure/data.json "0.1.1"]
                  [progress "1.0.1"]]
   :dev-dependencies [[lein-clojars "0.7.0"]]
-  :main overlay.core)
+  :run-aliases {:overlay overlay.main})

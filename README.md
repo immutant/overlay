@@ -24,27 +24,31 @@ The specifications of layee and layer may be one of the following:
  - A descriptor in the following form: app[-version]
 
 Currently, only 'immutant' and 'torquebox' are supported as values for
-'app', and version defaults to LATEST. Allowable values match what's
-on http://repository-torquebox.forge.cloudbees.com/incremental/
+'app', and version defaults to the latest incremental. You can 
+specify a specific incremental build number or released version. 
+Incremental build numbers are available from 
+http://repository-project.forge.cloudbees.com/incremental/ or from
+http://torquebox.org/2x/builds/ and http://immutant.org/builds/
+
 
 So to download the latest torquebox and overlay it with the latest
 immutant:
 
-    $ lein run torquebox immutant
+    $ lein run :overlay torquebox immutant
 
 If you already have two installations of an AS7-based app server, you
 can overlay the modules/config of one on the other like so:
 
-    $ lein run /path/to/torquebox /path/to/immutant
+    $ lein run :overlay /path/to/torquebox /path/to/immutant
 
 Alternatively,
 
-    $ lein run $TORQUEBOX_HOME $IMMUTANT_HOME
+    $ lein run :overlay $TORQUEBOX_HOME $IMMUTANT_HOME
 
 If you know the URL for a zipped archive, you may pass that as the
 first parameter:
 
-    $ lein run http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/LATEST/torquebox-dist-bin.zip
+    $ lein run :overlay http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/LATEST/torquebox-dist-bin.zip
 
 The output from the run indicates the resulting path of the overlaid
 distribution.
