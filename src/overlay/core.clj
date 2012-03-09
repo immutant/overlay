@@ -24,13 +24,30 @@
                    "standalone/configuration/standalone-full.xml"
                    "domain/configuration/domain.xml"])
 
-(defn incremental
-  "Return the correct URL for app, artifact, and version"
+(defn released-version? [version]
+  (and version (.contains version ".")))
+
+(defn incremental-url
+  "Return the correct incremental URL for app, artifact, and version"
   [app artifact & [version]]
   (let [file (if (keyword? artifact)
                (format "%s-dist-%s.zip" (name app) (name artifact))
                artifact)]
     (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
+
+(defn release-url
+  "Return the correct release URL for app, artifact, and version"
+  [app artifact version]
+  (let [app-name (name app)
+        file (format "%s-dist-%s-%s.zip" app-name version (name artifact))]
+    (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
+
+(defn url
+  "Return the correct url based on the version"
+  [app artifact version]
+  ((if (released-version? version)
+     release-url
+     incremental-url) app artifact version))
 
 (defn metadata-url
   "Return the metadata url, but only for full binary distributions"
@@ -106,7 +123,7 @@
 
 (defn artifact-spec
   [spec]
-  (let [[app version] (split spec #"\W")]
+  (let [[app version] (split spec #"-")]
     [(keyword app) version]))
 
 (defn path
@@ -118,7 +135,7 @@
         (recur (extract file)))
       (let [[app version] (artifact-spec spec)
             uri (if (contains? overlayable-apps app)
-                  (incremental app :bin version)
+                  (url app :bin version)
                   spec)]
         (recur (download-and-extract uri))))))
 
