@@ -4,6 +4,7 @@
 (defn -main [& args]
   (if (empty? args)
     (usage)
-    (overlay (first args) (second args)))
+    (binding [*verify-sha1-sum* true]
+      (overlay (first args) (second args))))
   (shutdown-agents)
   nil)
