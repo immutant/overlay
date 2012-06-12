@@ -1,19 +1,25 @@
 (ns overlay.core
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.io    :as io]
             [clojure.java.shell :as shell]
-            [clojure.data.json :as json]
+            [clojure.data.json  :as json]
+            [digest             :as digest]
             [overlay.filesystem :as fs]
-            [overlay.extract :as ex]
-            [overlay.xml :as xml]
-            [progress.file :as progress])
+            [overlay.extract    :as ex]
+            [overlay.xml        :as xml]
+            [progress.file      :as progress])
   (:use [clojure.string :only [split]]))
 
 (def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
        :dynamic true}
   *output-dir* (io/file "target"))
+
 (def ^{:doc "The dir where artifacts will be extracted. If nil, *output-dir* is used as a fallback. Root binding is nil"
        :dynamic true}
   *extract-dir* nil)
+
+(def ^{:doc "Should sha1 checksums be validated if available? Root binding is false"
+       :dynamic true}
+  *verify-sha1-sum* false)
 
 (def repository "http://repository-projectodd.forge.cloudbees.com")
 (def overlayable-apps #{:immutant :torquebox})
@@ -22,6 +28,10 @@
                    "standalone/configuration/standalone-ha.xml"
                    "standalone/configuration/standalone-full.xml"
                    "domain/configuration/domain.xml"])
+
+(defn println-err [& args]
+  (binding [*out* *err*]
+    (apply println args)))
 
 (defn released-version? [version]
   (and version (.contains version ".")))
@@ -82,11 +92,20 @@
 (defn extract [archive]
   (ex/extract archive (or *extract-dir* *output-dir*)))
 
+(defn verify-sum [uri file]
+  (if *verify-sha1-sum*
+    (try
+      (let [sum (slurp (str uri ".sha1"))]
+        (if (not= sum (digest/sha1 file))
+          (throw (RuntimeException. (str "Error: sha1 checksum validation failed for " uri)))))
+      (catch java.io.FileNotFoundException e
+        (println-err "\nWarning: no sha1 checksum found for" uri)))))
+
 (defn download-and-extract
   [uri]
-  (let [name (.getName (io/file uri))
-        file (io/file *output-dir* name)]
+  (let [file (io/file *output-dir* (.getName (io/file uri)))]
     (download uri file)
+    (verify-sum uri file)
     (extract file)))
 
 (defn overlay-dir
@@ -150,4 +169,4 @@
         (overlay-extra layee layer)))))
 
 (defn usage []
-  (println (slurp "README.md")))
+  (println-err (slurp "README.md")))

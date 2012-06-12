@@ -16,7 +16,7 @@
 (defn extract-shell
   "Attempts to shell out to 'unzip' command"
   [archive dir]
-  (shell/sh "unzip" "-q" "-o""-d" (str dir) (str archive)))
+  (shell/sh "unzip" "-q" "-o" "-d" (str dir) (str archive)))
 
 (defn extract
   "Assumes the archive has a single top-level directory and returns its File"
