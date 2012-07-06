@@ -95,18 +95,24 @@
 (defn verify-sum [uri file]
   (if *verify-sha1-sum*
     (try
-      (let [sum (slurp (str uri ".sha1"))]
-        (if (not= sum (digest/sha1 file))
-          (throw (RuntimeException. (str "Error: sha1 checksum validation failed for " uri)))))
+      (let [expected (slurp (str uri ".sha1"))
+            computed (digest/sha1 file)
+            verified (= expected computed)]
+        (when-not verified 
+          (println-err "\nError: sha1 checksum validation failed for" uri "\n"
+                       "  Expected:" expected "\n"
+                       "    Actual:" computed))
+        verified)
       (catch java.io.FileNotFoundException e
-        (println-err "\nWarning: no sha1 checksum found for" uri)))))
+        (println-err "\nWarning: no sha1 checksum found for" uri)))
+    true))
 
 (defn download-and-extract
   [uri]
   (let [file (io/file *output-dir* (.getName (io/file uri)))]
     (download uri file)
-    (verify-sum uri file)
-    (extract file)))
+    (and (verify-sum uri file)
+         (extract file))))
 
 (defn overlay-dir
   [target source]
