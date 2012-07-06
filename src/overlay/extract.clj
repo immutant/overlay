@@ -1,7 +1,7 @@
 (ns overlay.extract
   (:use [overlay.filesystem :only [delete-file-recursively]])
-  (:require [clojure.java.io :as io])
-  (:require [clojure.java.shell :as shell]))
+  (:require [clojure.java.io    :as io]
+            [clojure.java.shell :as shell]))
 
 (defn extract-java
   "Multi-platform, but won't preserve unix file permissions"
@@ -28,6 +28,7 @@
     (try
       (extract-shell archive tmp)
       (catch Throwable e
+        (println "WARNING: failed to find 'unzip' on your path - falling back to extracting via java. Any executables extracted won't be +x")
         (extract-java archive tmp)))
     (let [top (first (.listFiles tmp))
           target (io/file dir (.getName top))]
