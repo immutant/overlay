@@ -104,7 +104,8 @@
                        "    Actual:" computed))
         verified)
       (catch java.io.FileNotFoundException e
-        (println-err "\nWarning: no sha1 checksum found for" uri)))
+        (println-err "\nWarning: no sha1 checksum found for" uri)
+        true))
     true))
 
 (defn download-and-extract
