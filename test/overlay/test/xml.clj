@@ -5,7 +5,7 @@
   (:use [clojure.test]))
 
 (defn pretty [z]
-  (str/replace (stringify z) #"\s" ""))
+  (stringify z))
 
 (deftest simple-element-overlay
   (let [z1 (zip-string "<root><a/></root>")
@@ -28,6 +28,12 @@
 (deftest element-insert-middle
   (let [z1 (zip-string "<root><a/><c/></root>")
         z2 (zip-string "<root><a/><b/><c/></root>")
+        ov (overlay z2 :onto z1)]
+    (is (= (pretty z2) (pretty ov)))))
+
+(deftest source-element-with-attribute-superset
+  (let [z1 (zip-string "<root><a name='fred'/></root>")
+        z2 (zip-string "<root><a name='fred' sex='m'/></root>")
         ov (overlay z2 :onto z1)]
     (is (= (pretty z2) (pretty ov)))))
 
