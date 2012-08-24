@@ -23,7 +23,7 @@
 
 (def repository "http://repository-projectodd.forge.cloudbees.com")
 (def overlayable-apps #{:immutant :torquebox})
-(def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server})
+(def ignorable-elements #{:management-interfaces :endpoint-config :virtual-server :cache-container :mod-cluster-config})
 (def config-files ["standalone/configuration/standalone.xml"
                    "standalone/configuration/standalone-ha.xml"
                    "standalone/configuration/standalone-full.xml"
