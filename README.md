@@ -34,21 +34,21 @@ http://torquebox.org/2x/builds/ and http://immutant.org/builds/
 So to download the latest torquebox and overlay it with the latest
 immutant:
 
-    $ lein run :overlay torquebox immutant
+    $ lein overlay torquebox immutant
 
 If you already have two installations of an AS7-based app server, you
 can overlay the modules/config of one on the other like so:
 
-    $ lein run :overlay /path/to/torquebox /path/to/immutant
+    $ lein overlay /path/to/torquebox /path/to/immutant
 
 Alternatively,
 
-    $ lein run :overlay $TORQUEBOX_HOME $IMMUTANT_HOME
+    $ lein overlay $TORQUEBOX_HOME $IMMUTANT_HOME
 
 If you know the URL for a zipped archive, you may pass that as the
 first parameter:
 
-    $ lein run :overlay http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/LATEST/torquebox-dist-bin.zip
+    $ lein overlay http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/LATEST/torquebox-dist-bin.zip
 
 The output from the run indicates the resulting path of the overlaid
 distribution.
