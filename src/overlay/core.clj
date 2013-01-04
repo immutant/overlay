@@ -1,12 +1,13 @@
 (ns overlay.core
-  (:require [clojure.java.io    :as io]
-            [clojure.java.shell :as shell]
-            [clojure.data.json  :as json]
-            [digest             :as digest]
-            [overlay.filesystem :as fs]
-            [overlay.extract    :as ex]
-            [overlay.xml        :as xml]
-            [progress.file      :as progress])
+  (:require [clojure.java.io      :as io]
+            [clojure.java.shell   :as shell]
+            [clojure.data.json    :as json]
+            [digest               :as digest]
+            [overlay.filesystem   :as fs]
+            [overlay.extract      :as ex]
+            [overlay.xml          :as xml]
+            [progress.file        :as progress]
+            [clj-http.lite.client :as http])
   (:use [clojure.string :only [split]]))
 
 (def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
@@ -33,64 +34,72 @@
   (binding [*out* *err*]
     (apply println args)))
 
-(defn released-version? [version]
-  (and version (.contains version ".")))
-
-(defn incremental-url
-  "Return the correct incremental URL for app, artifact, and version"
-  [app artifact & [version]]
-  (let [file (if (keyword? artifact)
-               (format "%s-dist-%s.zip" (name app) (name artifact))
-               artifact)]
-    (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
-
-(defn release-url
-  "Return the correct release URL for app, artifact, and version"
-  [app artifact version]
-  (let [app-name (name app)
-        file (format "%s-dist-%s-%s.zip" app-name version (name artifact))]
-    (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
-
-(defn url
-  "Return the correct url based on the version"
-  [app artifact version]
-  ((if (released-version? version)
-     release-url
-     incremental-url) app artifact version))
-
 (defn metadata-url
   "Return the metadata url, but only for full binary distributions"
   [url]
   (if (.endsWith url "dist-bin.zip")
     (.replaceFirst url "/[^/]*$" "/build-metadata.json")))
 
-(defn dist-filesize
-  "Try to determine artifact size from build-metadata.json."
-  [url]
-  (if-let [metadata (metadata-url url)]
-    (try
-      (with-open [r (io/reader metadata)]
-        (:dist_size (json/read-json (slurp r))))
-      (catch Exception e
-        nil))))
+(defprotocol BinArtifact
+  "Collects relevant information for a particular binary artifact to be overlayed."
+  (url [_] "The URL from which the artifact may be downloaded.")
+  (filesize [_] "The size of the downloaded artifact."))
 
-(defn filesize
-  "Try to determine filesize of the artifact specified by src."
-  [src]
-  (let [f (io/file src)]
-    (if (.exists f)
-      (.length f)
-      (dist-filesize src))))
+(defrecord Incremental [app version]
+  BinArtifact
+  (url [_]
+       (let [file (format "%s-dist-bin.zip" (name app))]
+         (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
+  (filesize [this]
+   (let [metadata (metadata-url (url this))]
+     (with-open [r (io/reader metadata)]
+       (:dist_size (json/read-json (slurp r)))))))
 
-(defn download [src dest]
-  (println "Downloading" src)
-  (.mkdirs (.getParentFile (io/file dest)))
-  (progress/with-file-progress dest :filesize (filesize src)
-    (with-open [in (io/input-stream src)]
-      (io/copy in dest))))
+(defrecord Release [app version]
+  BinArtifact
+  (url [_]
+       (let [app-name (name app)
+             file (format "%s-dist-%s-bin.zip" app-name version)]
+         (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
+  (filesize [this]
+    (-> (http/head (url this))
+        :headers
+        (get "content-length")
+        Integer.)))
 
-(defn extract [archive]
-  (ex/extract archive (or *extract-dir* *output-dir*)))
+(defn released-version? [version]
+  (and version (.contains version ".")))
+
+(defn artifact-spec
+  [spec]
+  (let [[app version] (split spec #"-")]
+    [(keyword app) version]))
+
+(defn artifact
+  "Return the correct artifact based on the arguments passed"
+  ([spec]
+   (apply artifact (artifact-spec (str spec))))
+  ([app version]
+  ((if (released-version? version) ->Release ->Incremental) app version)))
+
+(defn artifact-exists? [artifact]
+  (= 200 (:status (http/head (url artifact) {:throw-exceptions false}))))
+
+(defn download [artifact dest]
+  (if (artifact-exists? artifact)
+    (do (println "Downloading" (url artifact))
+        (.mkdirs (.getParentFile (io/file dest)))
+        (let [size (try
+                     (filesize artifact)
+                     (catch Exception e
+                       0))]
+          (progress/with-file-progress dest :filesize size
+            (with-open [in (io/input-stream (url artifact))]
+              (io/copy in dest))))
+        true)
+    (do (println-err "Error: No artifact found for" (-> artifact :app name)
+                     "version" (:version artifact))
+        false)))
 
 (defn verify-sum [uri file]
   (if *verify-sha1-sum*
@@ -98,7 +107,7 @@
       (let [expected (slurp (str uri ".sha1"))
             computed (digest/sha1 file)
             verified (= expected computed)]
-        (when-not verified 
+        (when-not verified
           (println-err "\nError: sha1 checksum validation failed for" uri "\n"
                        "  Expected:" expected "\n"
                        "    Actual:" computed))
@@ -108,12 +117,18 @@
         true))
     true))
 
+(defn extract [archive]
+  (ex/extract archive (or *extract-dir* *output-dir*)))
+
 (defn download-and-extract
-  [uri]
-  (let [file (io/file *output-dir* (.getName (io/file uri)))]
-    (download uri file)
-    (and (verify-sum uri file)
-         (extract file))))
+  [artifact]
+  (let [url (url artifact)
+        file (io/file *output-dir* (.getName (io/file url)))
+        new-spec (and (download artifact file)
+                      (verify-sum url file)
+                      (extract file))]
+    (when-not new-spec (System/exit 1))
+    new-spec))
 
 (defn overlay-dir
   [target source]
@@ -146,11 +161,6 @@
   (let [sub (io/file dir "jboss")]
     (if (.exists sub) sub dir)))
 
-(defn artifact-spec
-  [spec]
-  (let [[app version] (split spec #"-")]
-    [(keyword app) version]))
-
 (defn path
   [spec]
   (let [file (io/file spec)]
@@ -158,11 +168,11 @@
       (if (.isDirectory file)
         file
         (recur (extract file)))
-      (let [[app version] (artifact-spec spec)
-            uri (if (contains? overlayable-apps app)
-                  (url app :bin version)
-                  spec)]
-        (recur (download-and-extract uri))))))
+      (let [[app version] (artifact-spec spec)]
+        (if (contains? overlayable-apps app)
+          (recur (download-and-extract (artifact spec)))
+          ((println-err "Don't know how to overlay" (str app))
+           (System/exit 1)))))))
 
 (defn overlay
   [target & [source]]

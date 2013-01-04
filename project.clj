@@ -5,6 +5,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojure/data.json "0.1.1"]
                  [digest "1.4.0"]
-                 [progress "1.0.1"]]
+                 [progress "1.0.1"]
+                 [clj-http-lite "0.2.0"]]
   :dev-dependencies [[lein-clojars "0.7.0"]]
   :aliases {"overlay" ["run" "-m" "overlay.main"]})
