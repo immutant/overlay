@@ -53,7 +53,7 @@
   (filesize [this]
    (let [metadata (metadata-url (url this))]
      (with-open [r (io/reader metadata)]
-       (:dist_size (json/read-json (slurp r)))))))
+       (:dist_size (json/read-str (slurp r) :key-fn keyword))))))
 
 (defrecord Release [app version]
   BinArtifact
