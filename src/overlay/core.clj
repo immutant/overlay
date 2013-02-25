@@ -30,6 +30,12 @@
                    "standalone/configuration/standalone-full.xml"
                    "domain/configuration/domain.xml"])
 
+(def type-size-keys
+  {"slim" :slim_dist_size
+   "full" :full_dist_size
+   "bin"  :dist_size
+   nil    :dist_size})
+
 (defn println-err [& args]
   (binding [*out* *err*]
     (apply println args)))
@@ -37,7 +43,7 @@
 (defn metadata-url
   "Return the metadata url, but only for full binary distributions"
   [url]
-  (if (.endsWith url "dist-bin.zip")
+  (if (re-find #"dist-.*\.zip$" url)
     (.replaceFirst url "/[^/]*$" "/build-metadata.json")))
 
 (defprotocol BinArtifact
@@ -45,21 +51,21 @@
   (url [_] "The URL from which the artifact may be downloaded.")
   (filesize [_] "The size of the downloaded artifact."))
 
-(defrecord Incremental [app version]
+(defrecord Incremental [app version type]
   BinArtifact
   (url [_]
-       (let [file (format "%s-dist-bin.zip" (name app))]
-         (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
+    (let [file (format "%s-dist-%s.zip" (name app) type)]
+      (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
   (filesize [this]
    (let [metadata (metadata-url (url this))]
      (with-open [r (io/reader metadata)]
-       (:dist_size (json/read-str (slurp r) :key-fn keyword))))))
+       ((type-size-keys type) (json/read-str (slurp r) :key-fn keyword))))))
 
-(defrecord Release [app version]
+(defrecord Release [app version type]
   BinArtifact
   (url [_]
        (let [app-name (name app)
-             file (format "%s-dist-%s-bin.zip" app-name version)]
+             file (format "%s-dist-%s-%s.zip" app-name version type)]
          (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
   (filesize [this]
     (-> (http/head (url this))
@@ -72,15 +78,18 @@
 
 (defn artifact-spec
   [spec]
-  (let [[app version] (split spec #"-")]
-    [(keyword app) version]))
+  (let [[app-version type] (split spec #":")
+        [app version]      (split app-version #"-")]
+    [(keyword app) version type]))
 
 (defn artifact
   "Return the correct artifact based on the arguments passed"
   ([spec]
-   (apply artifact (artifact-spec (str spec))))
+     (apply artifact (artifact-spec (str spec))))
   ([app version]
-  ((if (released-version? version) ->Release ->Incremental) app version)))
+     (artifact app version nil))
+  ([app version type]
+  ((if (released-version? version) ->Release ->Incremental) app version (or type "bin"))))
 
 (defn artifact-exists? [artifact]
   (= 200 (:status (http/head (url artifact) {:throw-exceptions false}))))
