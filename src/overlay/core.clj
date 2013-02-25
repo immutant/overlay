@@ -149,13 +149,14 @@
   (doseq [cfg config-files]
     (let [config (io/file from cfg)
           file (io/file to cfg)]
-      (println "Overlaying" (str file))
-      (io/copy (xml/stringify
-                (xml/overlay
-                 (xml/zip-file config)
-                 :onto (xml/zip-file file)
-                 :ignore #(contains? ignorable-elements (:tag %))))
-               file))))
+      (when (and (.exists config) (.exists file))
+        (println "Overlaying" (str file))
+        (io/copy (xml/stringify
+                  (xml/overlay
+                   (xml/zip-file config)
+                   :onto (xml/zip-file file)
+                   :ignore #(contains? ignorable-elements (:tag %))))
+                 file)))))
 
 (defn overlay-extra
   [to from]
