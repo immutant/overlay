@@ -9,4 +9,5 @@
                  [digest "1.4.0"]
                  [progress "1.0.1"]
                  [clj-http-lite "0.2.0"]]
-  :aliases {"overlay" ["run" "-m" "overlay.main"]})
+  :aliases {"overlay" ["run" "-m" "overlay.main"]}
+  :lein-release {:deploy-via :clojars})
