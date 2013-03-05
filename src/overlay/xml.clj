@@ -28,15 +28,28 @@
        (let [src (:attrs n) tgt (:attrs p)]
          (every? (fn [[k v]] (= v (k src))) tgt))))
 
+(defn subsystem-node-equal
+  "Ignore the version of the xmlns"
+  [n p]
+  (and (= :subsystem (:tag n) (:tag p))
+       (let [f (fn [m] (second (re-find #"(.*):[\d.]+$" (get-in m [:attrs :xmlns]))))
+             x (f n)
+             y (f p)]
+         (and x (= x y)))))
+
+(defn node-equal
+  [n p]
+  (or (subsystem-node-equal n p) (xml-node-equal n p)))
+
 (defn xml-node-replace
   [node loc]
-  (if (:attrs node)
-    (assoc node :attrs (:attrs (zip/node loc)))
+  (if (map? node)
+    (assoc node :attrs (merge (:attrs node) (:attrs (zip/node loc))))
     node))
 
 (defn find-child
   "Find a matching child among the children of the overlay-ee"
-  [child {:keys [onto pred] :or {pred xml-node-equal}}]
+  [child {:keys [onto pred] :or {pred node-equal}}]
   (let [target (zip/node child)]
     (loop [cur (zip/down onto)]
       (cond
@@ -56,7 +69,8 @@
 
 (defn overlay-child
   "If matching child found, recursively overlay its
-   children. Otherwise, add the child onto the overlay-ee."
+   children. Otherwise, add the child onto the overlay-ee.
+   TODO: or REPLACE node, e.g. newer version subsystem!"
   [child {:keys [onto] :as args}]
   (if-let [found (find-child child args)]
     (zip/up (overlay-siblings (zip/down child) (assoc args :onto (zip/edit found xml-node-replace child))))

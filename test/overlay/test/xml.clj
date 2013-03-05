@@ -7,6 +7,10 @@
 (defn pretty [z]
   (stringify z))
 
+(defn subsystem [xmlns]
+  {:tag :subsystem
+   :attrs {:xmlns xmlns}})
+
 (deftest simple-element-overlay
   (let [z1 (zip-string "<root><a/></root>")
         z2 (zip-string "<root><a/><b/></root>")
@@ -35,7 +39,7 @@
   (let [z1 (zip-string "<root><a name='fred'/></root>")
         z2 (zip-string "<root><a name='fred' sex='m'/></root>")
         ov (overlay z2 :onto z1)]
-    (is (= (pretty z2) (pretty ov)))))
+    (is (= z2 ov))))
 
 (deftest file-overlay
   (let [i (zip-file "test-resources/standalone-immutant.xml")
@@ -43,3 +47,14 @@
         expect (zip-file "test-resources/standalone-overlaid.xml")
         ov (overlay i :onto t :ignore #(= (:tag %) :endpoint-config))]
     (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
+
+(deftest subsystem-equality
+  (is (false? (subsystem-node-equal
+               (subsystem "urn:jboss:domain:jaxr:1.0")
+               (subsystem "urn:jboss:domain:jaxrs:1.0"))))
+  (is (false? (subsystem-node-equal
+               (subsystem "urn:jboss:domain:jaxrs:1.0")
+               (subsystem "urn:jboss:domain:jaxr:1.0"))))
+  (is (true? (subsystem-node-equal
+               (subsystem "urn:jboss:domain:logging:1.1")
+               (subsystem "urn:jboss:domain:logging:1.2")))))
