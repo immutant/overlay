@@ -26,7 +26,8 @@
   [n p]
   (and (= (:tag n) (:tag p))
        (let [src (:attrs n) tgt (:attrs p)]
-         (every? (fn [[k v]] (= v (k src))) tgt))))
+         (or (every? (fn [[k v]] (= v (k src))) tgt)
+             (every? (fn [[k v]] (= v (k tgt))) src)))))
 
 (defn subsystem-node-equal
   "Ignore the version of the xmlns"
