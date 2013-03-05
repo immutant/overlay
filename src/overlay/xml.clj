@@ -37,9 +37,16 @@
              y (f p)]
          (and x (= x y)))))
 
+(defn equal-by-name
+  [n p]
+  (and (= (:tag n) (:tag p))
+       (let [x (get-in n [:attrs :name])
+             y (get-in p [:attrs :name])]
+         (and x (= x y)))))
+
 (defn node-equal
   [n p]
-  (or (subsystem-node-equal n p) (xml-node-equal n p)))
+  (or (equal-by-name n p) (subsystem-node-equal n p) (xml-node-equal n p)))
 
 (defn xml-node-replace
   [node loc]
