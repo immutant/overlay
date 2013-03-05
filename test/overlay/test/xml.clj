@@ -41,11 +41,32 @@
         ov (overlay z2 :onto z1)]
     (is (= z2 ov))))
 
-(deftest file-overlay
+(deftest standalone-overlay-torquebox-onto-immutant
   (let [i (zip-file "test-resources/standalone-immutant.xml")
         t (zip-file "test-resources/standalone-torquebox.xml")
-        expect (zip-file "test-resources/standalone-overlaid.xml")
-        ov (overlay i :onto t :ignore #(= (:tag %) :endpoint-config))]
+        expect (zip-file "test-resources/standalone-overlaid-immutant.xml")
+        ov (overlay t :onto i)]
+    (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
+
+(deftest standalone-ha-overlay-torquebox-onto-immutant
+  (let [i (zip-file "test-resources/standalone-ha-immutant.xml")
+        t (zip-file "test-resources/standalone-ha-torquebox.xml")
+        expect (zip-file "test-resources/standalone-ha-overlaid-immutant.xml")
+        ov (overlay t :onto i)]
+    (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
+
+(deftest standalone-overlay-immutant-onto-torquebox
+  (let [i (zip-file "test-resources/standalone-immutant.xml")
+        t (zip-file "test-resources/standalone-torquebox.xml")
+        expect (zip-file "test-resources/standalone-overlaid-torquebox.xml")
+        ov (overlay i :onto t)]
+    (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
+
+(deftest standalone-ha-overlay-immutant-onto-torquebox
+  (let [i (zip-file "test-resources/standalone-ha-immutant.xml")
+        t (zip-file "test-resources/standalone-ha-torquebox.xml")
+        expect (zip-file "test-resources/standalone-ha-overlaid-torquebox.xml")
+        ov (overlay i :onto t)]
     (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
 
 (deftest subsystem-equality

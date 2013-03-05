@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?><server xmlns="urn:jboss:domain:1.4">
     <extensions>
         <extension module="org.jboss.as.clustering.infinispan"/>
+        <extension module="org.jboss.as.clustering.jgroups"/>
         <extension module="org.jboss.as.connector"/>
         <extension module="org.jboss.as.deployment-scanner"/>
         <extension module="org.jboss.as.ee"/>
         <extension module="org.jboss.as.jmx"/>
         <extension module="org.jboss.as.logging"/>
         <extension module="org.jboss.as.messaging"/>
+        <extension module="org.jboss.as.modcluster"/>
         <extension module="org.jboss.as.naming"/>
         <extension module="org.jboss.as.remoting"/>
         <extension module="org.jboss.as.security"/>
@@ -113,17 +115,33 @@
             <jboss-descriptor-property-replacement>true</jboss-descriptor-property-replacement>
         </subsystem>
         <subsystem xmlns="urn:jboss:domain:infinispan:1.4">
-            <cache-container name="web" aliases="standard-session-cache" default-cache="local-web" module="org.jboss.as.clustering.web.infinispan">
-                <local-cache name="local-web" batching="true">
-                    <file-store passivation="false" purge="false"/>
-                </local-cache>
+            <cache-container name="singleton" aliases="cluster ha-partition" default-cache="default">
+                <transport lock-timeout="60000"/>
+                <replicated-cache name="default" mode="SYNC" batching="true">
+                    <locking isolation="REPEATABLE_READ"/>
+                </replicated-cache>
             </cache-container>
-            <cache-container name="polyglot" default-cache="default">
-                <local-cache name="default" start="EAGER">
-                    <eviction max-entries="10000" strategy="LRU"/>
-                    <expiration max-idle="100000"/>
-                    <transaction mode="FULL_XA"/>
-                </local-cache>
+            <cache-container name="web" aliases="polyglot standard-session-cache" default-cache="repl" module="org.jboss.as.clustering.web.infinispan">
+                <transport lock-timeout="60000"/>
+                <replicated-cache name="repl" mode="ASYNC" batching="true">
+                    <file-store/>
+                </replicated-cache>
+                <replicated-cache name="sso" mode="SYNC" batching="true"/>
+                <distributed-cache name="dist" mode="ASYNC" batching="true" l1-lifespan="0">
+                    <file-store/>
+                </distributed-cache>
+            </cache-container>
+            <cache-container name="ejb" aliases="sfsb sfsb-cache" default-cache="repl" module="org.jboss.as.clustering.ejb3.infinispan">
+                <transport lock-timeout="60000"/>
+                <replicated-cache name="repl" mode="ASYNC" batching="true">
+                    <eviction strategy="LRU" max-entries="10000"/>
+                    <file-store/>
+                </replicated-cache>
+                <replicated-cache name="remote-connector-client-mappings" mode="SYNC" batching="true"/>
+                <distributed-cache name="dist" mode="ASYNC" batching="true" l1-lifespan="0">
+                    <eviction strategy="LRU" max-entries="10000"/>
+                    <file-store/>
+                </distributed-cache>
             </cache-container>
         </subsystem>
         <subsystem xmlns="urn:jboss:domain:jca:1.1">
@@ -145,6 +163,40 @@
             </default-workmanager>
             <cached-connection-manager/>
         </subsystem>
+        <subsystem xmlns="urn:jboss:domain:jgroups:1.1" default-stack="udp">
+            <stack name="udp">
+                <transport type="UDP" socket-binding="jgroups-udp"/>
+                <protocol type="PING"/>
+                <protocol type="MERGE3"/>
+                <protocol type="FD_SOCK" socket-binding="jgroups-udp-fd"/>
+                <protocol type="FD"/>
+                <protocol type="VERIFY_SUSPECT"/>
+                <protocol type="pbcast.NAKACK2"/>
+                <protocol type="UNICAST2"/>
+                <protocol type="pbcast.STABLE"/>
+                <protocol type="pbcast.GMS"/>
+                <protocol type="UFC"/>
+                <protocol type="MFC"/>
+                <protocol type="FRAG2"/>
+                <protocol type="RSVP"/>
+            </stack>
+            <stack name="tcp">
+                <transport type="TCP" socket-binding="jgroups-tcp"/>
+                <protocol type="MPING" socket-binding="jgroups-mping"/>
+                <protocol type="MERGE2"/>
+                <protocol type="FD_SOCK" socket-binding="jgroups-tcp-fd"/>
+                <protocol type="FD"/>
+                <protocol type="VERIFY_SUSPECT"/>
+                <protocol type="pbcast.NAKACK2"/>
+                <protocol type="UNICAST2"/>
+                <protocol type="pbcast.STABLE"/>
+                <protocol type="pbcast.GMS"/>
+                <protocol type="UFC"/>
+                <protocol type="MFC"/>
+                <protocol type="FRAG2"/>
+                <protocol type="RSVP"/>
+            </stack>
+        </subsystem>
         <subsystem xmlns="urn:jboss:domain:jmx:1.2">
             <expose-resolved-model/>
             <expose-expression-model/>
@@ -152,6 +204,7 @@
         </subsystem>
         <subsystem xmlns="urn:jboss:domain:messaging:1.3">
             <hornetq-server>
+                <cluster-password>${jboss.messaging.cluster.password:CHANGE ME!!}</cluster-password>
                 <persistence-enabled>true</persistence-enabled>
                 <journal-file-size>102400</journal-file-size>
                 <journal-min-files>2</journal-min-files>
@@ -170,6 +223,26 @@
                     </netty-acceptor>
                     <in-vm-acceptor name="in-vm" server-id="0"/>
                 </acceptors>
+                <broadcast-groups>
+                    <broadcast-group name="bg-group1">
+                        <socket-binding>messaging-group</socket-binding>
+                        <broadcast-period>5000</broadcast-period>
+                        <connector-ref>netty</connector-ref>
+                    </broadcast-group>
+                </broadcast-groups>
+                <discovery-groups>
+                    <discovery-group name="dg-group1">
+                        <socket-binding>messaging-group</socket-binding>
+                        <refresh-timeout>10000</refresh-timeout>
+                    </discovery-group>
+                </discovery-groups>
+                <cluster-connections>
+                    <cluster-connection name="my-cluster">
+                        <address>jms</address>
+                        <connector-ref>netty</connector-ref>
+                        <discovery-group-ref discovery-group-name="dg-group1"/>
+                    </cluster-connection>
+                </cluster-connections>
                 <security-settings>
                     <security-setting match="#">
                         <permission type="send" roles="guest"/>
@@ -183,6 +256,7 @@
                         <dead-letter-address>jms.queue.DLQ</dead-letter-address>
                         <expiry-address>jms.queue.ExpiryQueue</expiry-address>
                         <redelivery-delay>0</redelivery-delay>
+                        <redistribution-delay>1000</redistribution-delay>
                         <max-size-bytes>20971520</max-size-bytes>
                         <address-full-policy>PAGE</address-full-policy>
                         <message-counter-history-day-limit>10</message-counter-history-day-limit>
@@ -210,6 +284,13 @@
                 <security-enabled>false</security-enabled>
                 <jmx-management-enabled>true</jmx-management-enabled>
             </hornetq-server>
+        </subsystem>
+        <subsystem xmlns="urn:jboss:domain:modcluster:1.1">
+            <mod-cluster-config advertise-socket="modcluster" connector="ajp">
+                <dynamic-load-provider>
+                    <load-metric type="busyness"/>
+                </dynamic-load-provider>
+            </mod-cluster-config>
         </subsystem>
         <subsystem xmlns="urn:jboss:domain:naming:1.2">
             <remote-naming/>
@@ -249,6 +330,7 @@
         </subsystem>
         <subsystem xmlns="urn:jboss:domain:web:1.4" default-virtual-server="default-host" native="false">
             <connector name="http" protocol="HTTP/1.1" scheme="http" socket-binding="http"/>
+            <connector name="ajp" protocol="AJP/1.3" scheme="http" socket-binding="ajp"/>
             <virtual-server name="default-host" enable-welcome-root="false">
                 <alias name="localhost"/>
                 <alias name="example.com"/>
@@ -284,9 +366,15 @@
         <socket-binding name="ajp" port="8009"/>
         <socket-binding name="http" port="${http.port:8080}"/>
         <socket-binding name="https" port="8443"/>
+        <socket-binding name="jgroups-mping" port="0" multicast-address="${jboss.default.multicast.address:230.0.0.4}" multicast-port="45700"/>
+        <socket-binding name="jgroups-tcp" port="7600"/>
+        <socket-binding name="jgroups-tcp-fd" port="57600"/>
+        <socket-binding name="jgroups-udp" port="55200" multicast-address="${jboss.default.multicast.address:230.0.0.4}" multicast-port="45688"/>
+        <socket-binding name="jgroups-udp-fd" port="54200"/>
         <socket-binding name="messaging" port="5445"/>
         <socket-binding name="messaging-group" port="0" multicast-address="${jboss.messaging.group.address:231.7.7.7}" multicast-port="${jboss.messaging.group.port:9876}"/>
         <socket-binding name="messaging-throughput" port="5455"/>
+        <socket-binding name="modcluster" port="0" multicast-address="224.0.1.105" multicast-port="23364"/>
         <socket-binding name="remoting" port="4447"/>
         <socket-binding name="txn-recovery-environment" port="4712"/>
         <socket-binding name="txn-status-manager" port="4713"/>
