@@ -1,7 +1,6 @@
 (ns overlay.xml
   (:require [clojure.java.io :as io])
-  (:require [clojure.xml :as xml])
-  (:require [clojure.contrib.lazy-xml :as lazy-xml])
+  (:require [clojure.data.xml :as xml])
   (:require [clojure.zip :as zip]))
 
 (declare overlay-siblings)
@@ -9,17 +8,17 @@
 (defn zip-file
   "Create a zipper from a filename"
   [name]
-  (zip/xml-zip (xml/parse (io/file name))))
+  (zip/xml-zip (xml/parse (io/reader name) :namespace-aware false)))
 
 (defn zip-string
   "Create a zipper from a string containing xml"
   [s]
-  (zip/xml-zip (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
+  (zip/xml-zip (xml/parse (java.io.StringReader. s) :namespace-aware false)))
 
 (defn stringify
   "Pretty print an xml zipper"
   [zipper]
-  (with-out-str (lazy-xml/emit (zip/root zipper) :indent 4)))
+  (xml/indent-str (zip/root zipper)))
 
 (defn xml-node-equal
   "Ignore the content attribute of XML nodes"
