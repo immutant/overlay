@@ -20,16 +20,16 @@
   [zipper]
   (xml/indent-str (zip/root zipper)))
 
-(defn xml-node-equal
-  "Ignore the content attribute of XML nodes"
+(defn same-attr-subset
+  "One node has a subset of the attrs of the other"
   [n p]
   (and (= (:tag n) (:tag p))
        (let [src (:attrs n) tgt (:attrs p)]
          (or (every? (fn [[k v]] (= v (k src))) tgt)
              (every? (fn [[k v]] (= v (k tgt))) src)))))
 
-(defn subsystem-node-equal
-  "Ignore the version of the xmlns"
+(defn same-subsystem-name
+  "Ignores the version of the xmlns"
   [n p]
   (and (= :subsystem (:tag n) (:tag p))
        (let [f (fn [m] (second (re-find #"(.*):[\d.]+$" (get-in m [:attrs :xmlns]))))
@@ -37,7 +37,8 @@
              y (f p)]
          (and x (= x y)))))
 
-(defn equal-by-name
+(defn same-name-attr
+  "Each node has the same name"
   [n p]
   (and (= (:tag n) (:tag p))
        (let [x (get-in n [:attrs :name])
@@ -46,7 +47,9 @@
 
 (defn node-equal
   [n p]
-  (or (equal-by-name n p) (subsystem-node-equal n p) (xml-node-equal n p)))
+  (or (same-name-attr n p)
+      (same-subsystem-name n p)
+      (same-attr-subset n p)))
 
 (defn xml-node-replace
   [node loc]

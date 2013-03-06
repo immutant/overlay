@@ -35,11 +35,21 @@
         ov (overlay z2 :onto z1)]
     (is (= (pretty z2) (pretty ov)))))
 
-(deftest source-element-with-attribute-superset
+(deftest source-element-with-attribute-subset
+  (let [z1 (zip-string "<root><a foo='x'/></root>")
+        z2 (zip-string "<root><a foo='x' bar='y'/></root>")
+        o1 (overlay z2 :onto z1)
+        o2 (overlay z1 :onto z2)]
+    (is (= z2 o1))
+    (is (= z2 o2))))
+
+(deftest source-element-with-name-attribute
   (let [z1 (zip-string "<root><a name='fred'/></root>")
         z2 (zip-string "<root><a name='fred' sex='m'/></root>")
-        ov (overlay z2 :onto z1)]
-    (is (= z2 ov))))
+        o1 (overlay z2 :onto z1)
+        o2 (overlay z1 :onto z2)]
+    (is (= z2 o1))
+    (is (= z2 o2))))
 
 (deftest standalone-overlay-torquebox-onto-immutant
   (let [i (zip-file "test-resources/standalone-immutant.xml")
@@ -70,12 +80,12 @@
     (is (= (zip/root expect) (zip/root ov)) (stringify ov))))
 
 (deftest subsystem-equality
-  (is (false? (subsystem-node-equal
+  (is (false? (same-subsystem-name
                (subsystem "urn:jboss:domain:jaxr:1.0")
                (subsystem "urn:jboss:domain:jaxrs:1.0"))))
-  (is (false? (subsystem-node-equal
+  (is (false? (same-subsystem-name
                (subsystem "urn:jboss:domain:jaxrs:1.0")
                (subsystem "urn:jboss:domain:jaxr:1.0"))))
-  (is (true? (subsystem-node-equal
+  (is (true? (same-subsystem-name
                (subsystem "urn:jboss:domain:logging:1.1")
                (subsystem "urn:jboss:domain:logging:1.2")))))
