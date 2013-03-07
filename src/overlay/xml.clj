@@ -1,24 +1,60 @@
 (ns overlay.xml
-  (:require [clojure.java.io :as io])
-  (:require [clojure.data.xml :as xml])
-  (:require [clojure.zip :as zip]))
+  (:require [clojure.java.io :as io]
+            [clojure.xml     :as xml]
+            [clojure.zip     :as zip]
+            [clojure.string  :as str]))
 
 (declare overlay-siblings)
 
 (defn zip-file
   "Create a zipper from a filename"
   [name]
-  (zip/xml-zip (xml/parse (io/reader name) :namespace-aware false)))
+  (zip/xml-zip (xml/parse (io/file name))))
 
 (defn zip-string
   "Create a zipper from a string containing xml"
   [s]
-  (zip/xml-zip (xml/parse (java.io.StringReader. s) :namespace-aware false)))
+  (zip/xml-zip (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
+
+(def ^:dynamic *indent* 4)
+
+(defn- print-indent [level]
+  (print (apply str (repeat (* level *indent*) \ ))))
+
+;; borrowed from clojure.xml and modified to indent
+(defn- indenting-emit-element
+  ([e]
+     (indenting-emit-element e 0))
+  ([e level]
+     (if (instance? String e)
+       (println e)
+       (do
+         (print-indent level)
+         (print (str "<" (name (:tag e))))
+         (when (:attrs e)
+           (doseq [attr (:attrs e)]
+             (print (str " " (name (key attr)) "='" (val attr)"'"))))
+         (if (:content e)
+           (do
+             (let [content (:content e)]
+               (if (instance? String (first content))
+                 (do
+                   (print ">")
+                   (print (str/trim (first content))))
+                 (do 
+                   (println ">")
+                   (doseq [c content]
+                     (indenting-emit-element c (inc level)))
+                   (print-indent level))))
+             (println (str "</" (name (:tag e)) ">")))
+           (println "/>"))))))
 
 (defn stringify
   "Pretty print an xml zipper"
   [zipper]
-  (xml/indent-str (zip/root zipper)))
+  (with-out-str
+    (with-redefs [xml/emit-element indenting-emit-element]
+      (xml/emit (zip/root zipper)))))
 
 (defn same-attr-subset
   "One node has a subset of the attrs of the other"
