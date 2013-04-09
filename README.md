@@ -8,7 +8,10 @@ deploying both Ruby and Clojure applications, for example.
 ## Usage
 
 Clone the overlay repository. From within the repo, run 
-`lein overlay $JBOSS_DIR $OVERLAY_SOURCE_DIR`.
+`lein overlay $TARGET_DIR $SOURCE_DIR`. The source modules and config
+will overlay the target modules and config. And the two parameters
+don't necessarily have to be local paths, but that's the easiest way
+to overlay an existing JBoss installation.
 
 overlay.core/-main takes 2 params that should eventually resolve to
 two local filesystem paths: a layee and a layer. The latter overlays
@@ -31,7 +34,7 @@ Currently, only 'immutant' and 'torquebox' are supported as values for
 specify a specific incremental build number or released version. 
 Incremental build numbers are available from 
 http://repository-project.forge.cloudbees.com/incremental/ or from
-http://torquebox.org/2x/builds/ and http://immutant.org/builds/
+http://torquebox.org/builds/ and http://immutant.org/builds/
 
 
 So to download the latest torquebox and overlay it with the latest
