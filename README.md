@@ -8,7 +8,7 @@ deploying both Ruby and Clojure applications, for example.
 ## Usage
 
 Clone the overlay repository. From within the repo, run 
-     lein overlay $JBOSS_DIR $OVERLAY_DIR
+`lein overlay $JBOSS_DIR $OVERLAY_SOURCE_DIR`.
 
 overlay.core/-main takes 2 params that should eventually resolve to
 two local filesystem paths: a layee and a layer. The latter overlays
