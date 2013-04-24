@@ -142,7 +142,7 @@
 (defn overlay-dir
   [target source]
   (println "Overlaying" (str target))
-  (fs/overlay source target))
+  (fs/overlay source target :overwrite))
 
 (defn overlay-config
   [to from]

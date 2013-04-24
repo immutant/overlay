@@ -23,8 +23,18 @@
 ;;   (is (not (.exists (io/file output-dir)))))
 
 (deftest overlay-directory
-  (println "overlay-directory")
   (let [from "test-resources/modules"
         to (str output-dir "copy-of-modules")]
     (overlay from to)
     (is (= (files from) (files to)))))
+
+(deftest overlay-directory-overwrite
+  (let [from "test-resources/modules"
+        to (str output-dir "copy-for-overwrite")
+        afile (io/file to "afile.txt")]
+    (overlay from to)
+    (spit afile "overwrite")
+    (overlay from to)
+    (is (= "overwrite" (slurp afile)))
+    (overlay from to :overwrite)
+    (is (= "a file\n" (slurp afile)))))
