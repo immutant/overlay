@@ -7,7 +7,8 @@
             [overlay.extract      :as ex]
             [overlay.xml          :as xml]
             [progress.file        :as progress]
-            [clj-http.lite.client :as http])
+            [clj-http.lite.client :as http]
+            overlay.jboss)
   (:use [clojure.string :only [split]]))
 
 (def ^{:doc "The output dir used by overlay operations. Root binding ./target/"
@@ -24,7 +25,6 @@
 
 (def repository "http://repository-projectodd.forge.cloudbees.com")
 (def overlayable-apps #{:immutant :torquebox})
-(def ignorable-elements #{})
 (def config-files ["standalone/configuration/standalone.xml"
                    "standalone/configuration/standalone-ha.xml"
                    "standalone/configuration/standalone-full.xml"
@@ -154,8 +154,7 @@
         (io/copy (xml/stringify
                   (xml/overlay
                    (xml/zip-file config)
-                   :onto (xml/zip-file file)
-                   :ignore #(contains? ignorable-elements (:tag %))))
+                   (xml/zip-file file)))
                  file)))))
 
 (defn overlay-extra

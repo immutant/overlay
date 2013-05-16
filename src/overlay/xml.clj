@@ -4,7 +4,7 @@
             [clojure.zip     :as zip]
             [clojure.string  :as str]))
 
-(declare overlay-siblings)
+(declare overlay)
 
 (defn zip-file
   "Create a zipper from a filename"
@@ -56,7 +56,7 @@
     (with-redefs [xml/emit-element indenting-emit-element]
       (xml/emit (zip/root zipper)))))
 
-(defn same-attr-subset
+(defn match-attr-subset?
   "One node has a subset of the attrs of the other"
   [n p]
   (and (= (:tag n) (:tag p))
@@ -64,7 +64,7 @@
          (or (every? (fn [[k v]] (= v (k src))) tgt)
              (every? (fn [[k v]] (= v (k tgt))) src)))))
 
-(defn same-subsystem-name
+(defn match-subsystem-name?
   "Ignores the version of the xmlns"
   [n p]
   (and (= :subsystem (:tag n) (:tag p))
@@ -73,7 +73,7 @@
              y (f p)]
          (and x (= x y)))))
 
-(defn same-name-attr
+(defn match-name-attr?
   "Each node has the same name"
   [n p]
   (and (= (:tag n) (:tag p))
@@ -81,58 +81,55 @@
              y (get-in p [:attrs :name])]
          (and x (= x y)))))
 
-(defn node-equal
+(defn match?
   [n p]
-  (or (same-name-attr n p)
-      (same-subsystem-name n p)
-      (same-attr-subset n p)))
+  (or (match-name-attr? n p)
+      (match-subsystem-name? n p)
+      (match-attr-subset? n p)))
 
-(defn xml-node-replace
+(defn merge-attributes
   [node loc]
   (if (map? node)
     (assoc node :attrs (merge (:attrs node) (:attrs (zip/node loc))))
     node))
 
 (defn find-child
-  "Find a matching child among the children of the overlay-ee"
-  [child {:keys [onto pred] :or {pred node-equal}}]
-  (let [target (zip/node child)]
-    (loop [cur (zip/down onto)]
-      (cond
-       (nil? cur) nil
-       (pred target (zip/node cur)) cur
-       :else (recur (zip/right cur))))))
+  "Find a matching node among the children of the overlay-ee"
+  [node tgt]
+  (loop [cur (zip/down tgt)]
+    (cond
+     (nil? cur) nil
+     (match? node (zip/node cur)) cur
+     :else (recur (zip/right cur)))))
 
 (defn insert-child
   "The child must be inserted relative to its source siblings"
-  [child {:keys [onto] :as args}]
-  (loop [sibling (zip/left child)]
+  [src tgt]
+  (loop [sibling (zip/left src)]
     (if (nil? sibling)
-      (zip/insert-child onto (zip/node child))
-      (if-let [found (find-child sibling args)]
-        (zip/up (zip/insert-right found (zip/node child)))
+      (zip/insert-child tgt (zip/node src))
+      (if-let [found (find-child (zip/node sibling) tgt)]
+        (zip/up (zip/insert-right found (zip/node src)))
         (recur (zip/left sibling))))))  
 
-(defn overlay-child
-  "If matching child found, recursively overlay its
-   children. Otherwise, add the child onto the overlay-ee.
-   TODO: or REPLACE node, e.g. newer version subsystem!"
-  [child {:keys [onto] :as args}]
-  (if-let [found (find-child child args)]
-    (zip/up (overlay-siblings (zip/down child) (assoc args :onto (zip/edit found xml-node-replace child))))
-    (insert-child child args)))
+(defn replace-child
+  "Overwrite the target child with the source"
+  [src tgt]
+  (insert-child src (zip/remove (find-child (zip/node src) tgt))))
 
-(defn overlay-siblings
-  "Overlay each sibling of the child onto the target"
-  [child {:keys [onto ignore] :or {ignore #{}} :as args}]
-  (cond
-   (nil? child) onto
-   (ignore (zip/node child)) (recur (zip/right child) args)
-   :else (recur (zip/right child) (assoc args :onto (overlay-child child args)))))
+(defmulti overlay-child (fn [s t] (:tag (zip/node s))))
+
+(defmethod overlay-child :default [src tgt]
+  "If matching child found, recursively overlay its
+   children. Otherwise, add the child onto the overlay-ee."
+  (if-let [found (find-child (zip/node src) tgt)]
+    (zip/up (overlay src (zip/edit found merge-attributes src)))
+    (insert-child src tgt)))
 
 (defn overlay
   "Overlay one zipper onto another"
-  [src & {:keys [onto] :as args}]
-  (overlay-siblings (zip/down src) args))
-
-
+  [src tgt]
+  (loop [sibling (zip/down src) target tgt]
+    (cond
+     (nil? sibling) target
+     :else (recur (zip/right sibling) (overlay-child sibling target)))))
