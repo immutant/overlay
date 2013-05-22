@@ -9,4 +9,5 @@
                  [progress "1.0.1"]
                  [clj-http-lite "0.2.0"]]
   :aliases {"overlay" ["run" "-m" "overlay.main"]}
+  {:signing {:gpg-key "BFC757F9"}}
   :lein-release {:deploy-via :clojars})
