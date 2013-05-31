@@ -6,6 +6,7 @@
             [overlay.filesystem   :as fs]
             [overlay.extract      :as ex]
             [overlay.xml          :as xml]
+            [overlay.options      :as opts]
             [progress.file        :as progress]
             [clj-http.lite.client :as http]
             overlay.jboss)
@@ -140,9 +141,9 @@
     new-spec))
 
 (defn overlay-dir
-  [target source]
+  [target source & [overwrite?]]
   (println "Overlaying" (str target))
-  (fs/overlay source target :overwrite))
+  (fs/overlay source target overwrite?))
 
 (defn overlay-config
   [to from]
@@ -184,14 +185,15 @@
            (System/exit 1)))))))
 
 (defn overlay
-  [target & [source]]
-  (let [layee (path target)]
-    (when source
+  [& argv]
+  (let [args (opts/parse argv)
+        layee (path (:layee args))]
+    (when-let [source (:layer args)]
       (let [layer (path source)
-            this-jboss (jboss-dir layee)
-            that-jboss (jboss-dir layer)]
-        (overlay-dir (io/file this-jboss "modules") (io/file that-jboss "modules"))
-        (overlay-config this-jboss that-jboss)
+            this (jboss-dir layee)
+            that (jboss-dir layer)]
+        (overlay-dir (io/file this "modules") (io/file that "modules") (:overwrite? args))
+        (overlay-config this that)
         (overlay-extra layee layer)))))
 
 (defn usage []

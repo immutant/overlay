@@ -5,6 +5,6 @@
   (if (empty? args)
     (usage)
     (binding [*verify-sha1-sum* true]
-      (overlay (first args) (second args))))
+      (apply overlay args)))
   (shutdown-agents)
   nil)

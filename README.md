@@ -7,21 +7,14 @@ deploying both Ruby and Clojure applications, for example.
 
 ## Usage
 
-Clone the overlay repository. From within the repo, run 
-`lein overlay $TARGET_DIR $SOURCE_DIR`. The source modules and config
-will overlay the target modules and config. And the two parameters
-don't necessarily have to be local paths, but that's the easiest way
-to overlay an existing JBoss installation.
+Clone the overlay repository, cd into the project, and run this:
 
-overlay.core/-main takes 2 params that should eventually resolve to
-two local filesystem paths: a layee and a layer. The latter overlays
-the former so the desired result will reside beneath the path to the
-layee, i.e. the first param.
+    $ lein overlay <target> <source>
 
-It is convenient to download and extract a specific distribution by
-simply omitting the second param.
-
-Anything downloaded will be extracted beneath target/.
+The `target` represents the "layee", i.e. the thing to be overlaid.
+The `source` is the "layer". The source modules and config will
+overlay the target modules and config. The desired result will reside
+beneath the path to the target, i.e. the first parameter.
 
 The specifications of layee and layer may be one of the following:
 
@@ -30,12 +23,16 @@ The specifications of layee and layer may be one of the following:
  - A descriptor in the following form: app[-version]
 
 Currently, only 'immutant' and 'torquebox' are supported as values for
-'app', and version defaults to the latest incremental. You can 
-specify a specific incremental build number or released version. 
-Incremental build numbers are available from 
+'app', and version defaults to the latest incremental. You can specify
+a specific incremental build number or released version. Incremental
+build numbers are available from
 http://repository-project.forge.cloudbees.com/incremental/ or from
 http://torquebox.org/builds/ and http://immutant.org/builds/
 
+It is convenient to download and extract a specific distribution by
+simply omitting the second param.
+
+Anything downloaded will be extracted beneath target/.
 
 So to download the latest torquebox and overlay it with the latest
 immutant:
@@ -45,7 +42,7 @@ immutant:
 If you already have two installations of an AS7-based app server, you
 can overlay the modules/config of one on the other like so:
 
-    $ lein overlay /path/to/torquebox /path/to/immutant
+    $ lein overlay /path/to/eap-6.1 ~/.immutant/current
 
 Alternatively,
 
@@ -58,6 +55,12 @@ first parameter:
 
 The output from the run indicates the resulting path of the overlaid
 distribution.
+
+By default, files in common to both layer and layee beneath `modules/`
+will *not* be overwritten, unless you specify the `--overwrite`
+option (or `-o`).
+
+    $ lein overlay --overwrite layee layer
 
 ## License
 
