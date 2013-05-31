@@ -1,7 +1,7 @@
-(ns overlay.test.filesystem
-  (:use [overlay.filesystem])
-  (:require [clojure.java.io :as io])
-  (:use [clojure.test]))
+(ns overlay.filesystem-test
+  (:use overlay.filesystem
+        clojure.test)
+  (:require [clojure.java.io :as io]))
 
 (def output-dir "test-resources/output/")
 
@@ -17,10 +17,6 @@
     (sort (map #(str (relative % dir)) (contents (io/file dir))))))
 
 (use-fixtures :each (fn [f] (delete-file-recursively output-dir :quietly) (f)))
-
-;; (deftest no-output-dir
-;;   (println "no-output-dir")
-;;   (is (not (.exists (io/file output-dir)))))
 
 (deftest overlay-directory
   (let [from "test-resources/modules"

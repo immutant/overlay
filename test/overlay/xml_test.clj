@@ -1,4 +1,4 @@
-(ns overlay.test.xml
+(ns overlay.xml-test
   (:require [clojure.zip :as zip]
             [clojure.string :as str]
             overlay.jboss)
