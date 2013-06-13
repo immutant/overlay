@@ -115,7 +115,7 @@
 (defn replace-child
   "Overwrite the target child with the source"
   [src tgt]
-  (insert-child src (zip/remove (find-child (zip/node src) tgt))))
+  (zip/up (zip/replace (find-child (zip/node src) tgt) (zip/node src))))
 
 (defmulti overlay-child (fn [s t] (:tag (zip/node s))))
 
