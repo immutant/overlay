@@ -77,6 +77,9 @@
 (defn released-version? [version]
   (and version (.contains version ".")))
 
+(defn default-dist-type [app]
+  (if (= app :immutant) "slim" "bin"))
+
 (defn artifact-spec
   [spec]
   (let [[app-version type] (split spec #":")
@@ -90,7 +93,9 @@
   ([app version]
      (artifact app version nil))
   ([app version type]
-  ((if (released-version? version) ->Release ->Incremental) app version (or type "bin"))))
+     ((if (released-version? version) ->Release ->Incremental)
+      app version
+      (or type (default-dist-type app)))))
 
 (defn artifact-exists? [artifact]
   (= 200 (:status (http/head (url artifact) {:throw-exceptions false}))))
