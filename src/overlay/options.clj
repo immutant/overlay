@@ -1,6 +1,6 @@
 (ns overlay.options)
 
-(def option? (comp (partial = \-) first))
+(def option? (comp (partial = \-) first str))
 
 (defn layee [m]
   (assoc m :layee (->> m :argv (remove option?) first)))

@@ -1,6 +1,7 @@
 (ns overlay.options-test
   (:use overlay.options
-        clojure.test))
+        clojure.test)
+  (:require [clojure.java.io :as io]))
 
 (deftest no-args
   (let [m {:argv []}]
@@ -33,6 +34,14 @@
     (is (:overwrite? (overwrite? m))))
   (let [m {:argv ["--overwrite" "layee" "layer"]}]
     (is (:overwrite? (overwrite? m)))))
+
+(deftest parse-file-options
+  (let [layee (io/file "layee")
+        layer (io/file "layer")
+        v (parse ["-o" layee layer])]
+    (is (:overwrite? v))
+    (is (= layee (:layee v)))
+    (is (= layer (:layer v)))))
 
 (deftest parse-options
   (let [v (parse ["-o" "layee" "layer"])]
