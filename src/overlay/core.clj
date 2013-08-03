@@ -24,7 +24,7 @@
        :dynamic true}
   *verify-sha1-sum* false)
 
-(def repository "http://repository-projectodd.forge.cloudbees.com")
+(def repository "http://downloads.immutant.org")
 (def overlayable-apps #{:immutant :torquebox})
 (def config-files ["standalone/configuration/standalone.xml"
                    "standalone/configuration/standalone-ha.xml"
