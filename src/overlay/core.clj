@@ -25,7 +25,7 @@
   *verify-sha1-sum* false)
 
 (def repository "http://downloads.immutant.org")
-(def overlayable-apps #{:immutant :torquebox})
+(def overlayable-apps #{:immutant :torquebox :hotrod})
 (def config-files ["standalone/configuration/standalone.xml"
                    "standalone/configuration/standalone-ha.xml"
                    "standalone/configuration/standalone-full.xml"
@@ -46,6 +46,13 @@
   [url]
   (if (re-find #"dist-.*\.zip$" url)
     (.replaceFirst url "/[^/]*$" "/build-metadata.json")))
+
+(defn content-length
+  [url]
+  (-> (http/head url)
+      :headers
+      (get "content-length")
+      Integer.))
 
 (defprotocol BinArtifact
   "Collects relevant information for a particular binary artifact to be overlayed."
@@ -69,10 +76,19 @@
              file (format "%s-dist-%s-%s.zip" app-name version type)]
          (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
   (filesize [this]
-    (-> (http/head (url this))
-        :headers
-        (get "content-length")
-        Integer.)))
+    (content-length (url this))))
+
+(defrecord HotRodIncremental [app version]
+  BinArtifact
+  (url [_]
+    (format "https://projectodd.ci.cloudbees.com/job/overlay-hotrod/%s/artifact/hotrod-overlay.zip"
+            (or version "lastSuccessfulBuild")))
+  (filesize [this] (content-length (url this))))
+
+(defrecord ArbitraryURL [address]
+  BinArtifact
+  (url [_] address)
+  (filesize [_] (content-length address)))
 
 (defn released-version? [version]
   (and version (.contains version ".")))
@@ -89,13 +105,18 @@
 (defn artifact
   "Return the correct artifact based on the arguments passed"
   ([spec]
-     (apply artifact (artifact-spec (str spec))))
+     (let [s (str spec)]
+       (if (re-find #"^http" s)
+         (->ArbitraryURL s)
+         (apply artifact (artifact-spec s)))))
   ([app version]
      (artifact app version nil))
   ([app version type]
-     ((if (released-version? version) ->Release ->Incremental)
-      app version
-      (or type (default-dist-type app)))))
+     (if (= app :hotrod)
+       (->HotRodIncremental app version)
+       ((if (released-version? version) ->Release ->Incremental)
+        app version
+        (or type (default-dist-type app))))))
 
 (defn artifact-exists? [artifact]
   (= 200 (:status (http/head (url artifact) {:throw-exceptions false}))))
@@ -183,11 +204,7 @@
       (if (.isDirectory file)
         file
         (recur (extract file)))
-      (let [[app version] (artifact-spec spec)]
-        (if (contains? overlayable-apps app)
-          (recur (download-and-extract (artifact spec)))
-          ((println-err "Don't know how to overlay" (str app))
-           (System/exit 1)))))))
+      (recur (download-and-extract (artifact spec))))))
 
 (defn overlay
   [& argv]
