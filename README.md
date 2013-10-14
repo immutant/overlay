@@ -57,4 +57,3 @@ will *not* be overwritten, unless you specify the `--overwrite`
 option (or `-o`).
 
     $ lein overlay --overwrite layee layer
-
