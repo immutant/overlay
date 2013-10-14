@@ -219,4 +219,5 @@
         (overlay-extra layee layer)))))
 
 (defn usage []
-  (println-err (slurp "README.md")))
+  (println-err (slurp "README.md")
+               "Valid app descriptors: " (map name overlayable-apps) "\n"))

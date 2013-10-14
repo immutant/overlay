@@ -22,12 +22,8 @@ The specifications of layee and layer may be one of the following:
  - A URL to a zipped distro: it'll be fetched and extracted to target/
  - A descriptor in the following form: app[-version]
 
-Currently, only 'immutant' and 'torquebox' are supported as values for
-'app', and version defaults to the latest incremental. You can specify
-a specific incremental build number or released version. Incremental
-build numbers are available from
-http://repository-project.forge.cloudbees.com/incremental/ or from
-http://torquebox.org/builds/ and http://immutant.org/builds/
+Version defaults to the latest incremental. You can specify a specific
+incremental build number or released version.
 
 It is convenient to download and extract a specific distribution by
 simply omitting the second param.
@@ -62,7 +58,3 @@ option (or `-o`).
 
     $ lein overlay --overwrite layee layer
 
-## License
-
-Copyright (C) 2011-2013 Jim Crossley
-Distributed under the Eclipse Public License, the same as Clojure.
