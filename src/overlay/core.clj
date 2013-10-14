@@ -25,7 +25,7 @@
   *verify-sha1-sum* false)
 
 (def repository "http://downloads.immutant.org")
-(def overlayable-apps #{:immutant :torquebox :hotrod})
+(def overlayable-features #{:immutant :torquebox :hotrod})
 (def config-files ["standalone/configuration/standalone.xml"
                    "standalone/configuration/standalone-ha.xml"
                    "standalone/configuration/standalone-full.xml"
@@ -59,26 +59,26 @@
   (url [_] "The URL from which the artifact may be downloaded.")
   (filesize [_] "The size of the downloaded artifact."))
 
-(defrecord Incremental [app version type]
+(defrecord Incremental [feature version type]
   BinArtifact
   (url [_]
-    (let [file (format "%s-dist-%s.zip" (name app) type)]
-      (format "%s/incremental/%s/%s/%s" repository (name app) (or version "LATEST") file)))
+    (let [file (format "%s-dist-%s.zip" (name feature) type)]
+      (format "%s/incremental/%s/%s/%s" repository (name feature) (or version "LATEST") file)))
   (filesize [this]
    (let [metadata (metadata-url (url this))]
      (with-open [r (io/reader metadata)]
        ((type-size-keys type) (json/read-str (slurp r) :key-fn keyword))))))
 
-(defrecord Release [app version type]
+(defrecord Release [feature version type]
   BinArtifact
   (url [_]
-       (let [app-name (name app)
-             file (format "%s-dist-%s-%s.zip" app-name version type)]
-         (format "%s/release/org/%s/%s-dist/%s/%s" repository app-name app-name version file)))
+       (let [feature-name (name feature)
+             file (format "%s-dist-%s-%s.zip" feature-name version type)]
+         (format "%s/release/org/%s/%s-dist/%s/%s" repository feature-name feature-name version file)))
   (filesize [this]
     (content-length (url this))))
 
-(defrecord HotRodIncremental [app version]
+(defrecord HotRodIncremental [feature version]
   BinArtifact
   (url [_]
     (format "https://projectodd.ci.cloudbees.com/job/overlay-hotrod/%s/artifact/hotrod-overlay.zip"
@@ -93,14 +93,14 @@
 (defn released-version? [version]
   (and version (.contains version ".")))
 
-(defn default-dist-type [app]
-  (if (= app :immutant) "slim" "bin"))
+(defn default-dist-type [feature]
+  (if (= feature :immutant) "slim" "bin"))
 
 (defn artifact-spec
   [spec]
-  (let [[app-version type] (split spec #":")
-        [app version]      (split app-version #"-")]
-    [(keyword app) version type]))
+  (let [[feature-version type] (split spec #":")
+        [feature version]      (split feature-version #"-")]
+    [(keyword feature) version type]))
 
 (defn artifact
   "Return the correct artifact based on the arguments passed"
@@ -109,14 +109,14 @@
        (if (re-find #"^http" s)
          (->ArbitraryURL s)
          (apply artifact (artifact-spec s)))))
-  ([app version]
-     (artifact app version nil))
-  ([app version type]
-     (if (= app :hotrod)
-       (->HotRodIncremental app version)
+  ([feature version]
+     (artifact feature version nil))
+  ([feature version type]
+     (if (= feature :hotrod)
+       (->HotRodIncremental feature version)
        ((if (released-version? version) ->Release ->Incremental)
-        app version
-        (or type (default-dist-type app))))))
+        feature version
+        (or type (default-dist-type feature))))))
 
 (defn artifact-exists? [artifact]
   (= 200 (:status (http/head (url artifact) {:throw-exceptions false}))))
@@ -133,7 +133,7 @@
             (with-open [in (io/input-stream (url artifact))]
               (io/copy in dest))))
         true)
-    (do (println-err "Error: No artifact found for" (-> artifact :app name)
+    (do (println-err "Error: No artifact found for" (-> artifact :feature name)
                      "version" (:version artifact))
         false)))
 
@@ -221,4 +221,4 @@
 (defn usage []
   (if (.exists (io/file "README.md"))
     (println-err (slurp "README.md")))
-  (println-err "Valid app descriptors: " (map name overlayable-apps) "\n"))
+  (println-err "Valid features: " (map name overlayable-features) "\n"))

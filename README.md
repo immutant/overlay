@@ -1,9 +1,9 @@
 ## Summary
 
-This project features a means to overlay modules and their xml config
-atop an existing JBoss AS7 instance. This enables TorqueBox and
-Immutant to be merged into a single application server capable of
-deploying both Ruby and Clojure applications, for example.
+This project features a means to overlay features, i.e. modules and
+their xml config, atop an existing JBoss AS7 instance. This enables
+TorqueBox and Immutant to be merged into a single application server
+capable of deploying both Ruby and Clojure applications, for example.
 
 ## Usage
 
@@ -20,7 +20,7 @@ The specifications of layee and layer may be one of the following:
 
  - A local path to a jboss, torquebox, or immutant installation
  - A URL to a zipped distro: it'll be fetched and extracted to target/
- - A descriptor in the following form: app[-version]
+ - A descriptor in the following form: feature[-version]
 
 Version defaults to the latest incremental. You can specify a specific
 incremental build number or released version.
