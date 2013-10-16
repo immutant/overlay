@@ -81,7 +81,7 @@
 (defrecord HotRodIncremental [feature version]
   BinArtifact
   (url [_]
-    (format "https://projectodd.ci.cloudbees.com/job/overlay-hotrod/%s/artifact/hotrod-overlay.zip"
+    (format "https://projectodd.ci.cloudbees.com/job/hotrod-overlay/%s/artifact/hotrod-overlay.zip"
             (or version "lastSuccessfulBuild")))
   (filesize [this] (content-length (url this))))
 
