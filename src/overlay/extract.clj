@@ -1,7 +1,6 @@
 (ns overlay.extract
-  (:use [overlay.filesystem :only [delete-file-recursively]])
-  (:require [clojure.java.io    :as io]
-            [clojure.java.shell :as shell]))
+  (:use [overlay.filesystem :only [delete-file-recursively +x-sh-scripts]])
+  (:require [clojure.java.io :as io]))
 
 (defn extract-java
   "Multi-platform, but won't preserve unix file permissions"
@@ -13,10 +12,13 @@
           (.mkdirs file)
           (io/copy (.getInputStream zip entry) file))))))
 
-(defn extract-shell
-  "Attempts to shell out to 'unzip' command"
-  [archive dir]
-  (shell/sh "unzip" "-q" "-o" "-d" (str dir) (str archive)))
+(defn move-extract [from to]
+  (let [top (first (.listFiles from))
+        target (io/file to (.getName top))]
+      (if (.exists target) (delete-file-recursively target))
+      (.renameTo top target)
+      (.delete from)
+      target))
 
 (defn extract
   "Assumes the archive has a single top-level directory and returns its File"
@@ -25,16 +27,8 @@
   (let [tmp (io/file dir ".vanilla-extract")]
     (delete-file-recursively tmp :quietly)
     (.mkdirs tmp)
-    (try
-      (extract-shell archive tmp)
-      (catch Throwable e
-        (println "WARNING: failed to find 'unzip' on your path - falling back to extracting via java. Any executables extracted won't be +x")
-        (extract-java archive tmp)))
-    (let [top (first (.listFiles tmp))
-          target (io/file dir (.getName top))]
-      (if (.exists target) (delete-file-recursively target))
-      (.renameTo top target)
-      (.delete tmp)
-      (println "Extracted" (str target))
-      target)))
-
+    (extract-java archive tmp)
+    (+x-sh-scripts tmp)
+    (let [final (move-extract tmp dir)]
+      (println "Extracted" (str final))
+      final)))

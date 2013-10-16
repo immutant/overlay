@@ -10,6 +10,11 @@
         (delete-file-recursively child silently)))
     (io/delete-file f silently)))
 
+(defn +x-sh-scripts [dir]
+  (doseq [file (file-seq (io/file dir))]
+    (when (re-find #"\.sh$" (.getName file))
+      (.setExecutable file true false))))
+
 (defn relative
   "Return a File constructed with its path relative to a base path"
   [file base]
