@@ -37,9 +37,11 @@
    "bin"  :dist_size
    nil    :dist_size})
 
-(defn get-json [url]
+(defn get-json* [url]
   (with-open [r (io/reader url)]
     (json/read-str (slurp r) :key-fn keyword)))
+
+(def get-json (memoize get-json*))
 
 (defn println-err [& args]
   (binding [*out* *err*]
