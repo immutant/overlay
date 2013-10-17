@@ -115,7 +115,7 @@
   (version [_]
     "unknown")
   (feature [_]
-    "arbitrary"))
+    "unknownURL"))
 
 (defn released-version? [version]
   (and version (.contains version ".")))
