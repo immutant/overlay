@@ -37,6 +37,10 @@
    "bin"  :dist_size
    nil    :dist_size})
 
+(defn get-json [url]
+  (with-open [r (io/reader url)]
+    (json/read-str (slurp r) :key-fn keyword)))
+
 (defn println-err [& args]
   (binding [*out* *err*]
     (apply println args)))
@@ -57,7 +61,9 @@
 (defprotocol BinArtifact
   "Collects relevant information for a particular binary artifact to be overlayed."
   (url [_] "The URL from which the artifact may be downloaded.")
-  (filesize [_] "The size of the downloaded artifact."))
+  (filesize [_] "The size of the downloaded artifact.")
+  (version [_] "The version of the artifact.")
+  (feature [_] "The feature provided by the artifact."))
 
 (defrecord Incremental [feature version type]
   BinArtifact
@@ -65,9 +71,12 @@
     (let [file (format "%s-dist-%s.zip" (name feature) type)]
       (format "%s/incremental/%s/%s/%s" repository (name feature) (or version "LATEST") file)))
   (filesize [this]
-   (let [metadata (metadata-url (url this))]
-     (with-open [r (io/reader metadata)]
-       ((type-size-keys type) (json/read-str (slurp r) :key-fn keyword))))))
+    ((type-size-keys type) (get-json (metadata-url (url this)))))
+  (version [this]
+    (or version
+        (:build_number (get-json (metadata-url (url this))))))
+  (feature [this]
+    (:feature this)))
 
 (defrecord Release [feature version type]
   BinArtifact
@@ -76,19 +85,35 @@
              file (format "%s-dist-%s-%s.zip" feature-name version type)]
          (format "%s/release/org/%s/%s-dist/%s/%s" repository feature-name feature-name version file)))
   (filesize [this]
-    (content-length (url this))))
+    (content-length (url this)))
+  (version [_] version)
+  (feature [_] feature))
 
-(defrecord HotRodIncremental [feature version]
+
+(defrecord HotRodIncremental [version]
   BinArtifact
   (url [_]
     (format "https://projectodd.ci.cloudbees.com/job/hotrod-overlay/%s/artifact/hotrod-overlay.zip"
             (or version "lastSuccessfulBuild")))
-  (filesize [this] (content-length (url this))))
+  (filesize [this] (content-length (url this)))
+  (version [_]
+    (or version
+        (-> "https://projectodd.ci.cloudbees.com/job/hotrod-overlay/api/json"
+            get-json
+            :lastSuccessfulBuild
+            :number
+            str)))
+  (feature [_]
+    "hotrod"))
 
 (defrecord ArbitraryURL [address]
   BinArtifact
   (url [_] address)
-  (filesize [_] (content-length address)))
+  (filesize [_] (content-length address))
+  (version [_]
+    "unknown")
+  (feature [_]
+    "arbitrary"))
 
 (defn released-version? [version]
   (and version (.contains version ".")))
@@ -113,7 +138,7 @@
      (artifact feature version nil))
   ([feature version type]
      (if (= feature :hotrod)
-       (->HotRodIncremental feature version)
+       (->HotRodIncremental version)
        ((if (released-version? version) ->Release ->Incremental)
         feature version
         (or type (default-dist-type feature))))))
