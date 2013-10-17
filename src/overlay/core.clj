@@ -67,18 +67,24 @@
   (version [_] "The version of the artifact.")
   (feature [_] "The feature provided by the artifact."))
 
-(defrecord Incremental [feature version type]
+(defn incremental-url [feature version file]
+  (format "%s/incremental/%s/%s/%s" repository (name feature) version file))
+
+(defrecord Incremental [feature vers type]
   BinArtifact
-  (url [_]
+  (url [this]
     (let [file (format "%s-dist-%s.zip" (name feature) type)]
-      (format "%s/incremental/%s/%s/%s" repository (name feature) (or version "LATEST") file)))
+      (incremental-url feature (version this) file)))
   (filesize [this]
     ((type-size-keys type) (get-json (metadata-url (url this)))))
   (version [this]
-    (or version
-        (:build_number (get-json (metadata-url (url this))))))
-  (feature [this]
-    (:feature this)))
+    (if (or (not vers) (= "LATEST" vers))
+      (:build_number (get-json (incremental-url feature
+                                                "LATEST"
+                                                "build-metadata.json")))
+      vers))
+  (feature [_]
+    feature))
 
 (defrecord Release [feature version type]
   BinArtifact
