@@ -1,4 +1,4 @@
-(defproject org.immutant/overlay "1.5.2"
+(defproject org.immutant/overlay "1.5.3-SNAPSHOT"
   :description "Overlays features from one JBoss AS7 installation onto another"
   :url "http://github.com/immutant/overlay"
   :license {:name "Eclipse Public License"
