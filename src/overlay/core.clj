@@ -252,6 +252,6 @@
         (overlay-extra layee layer)))))
 
 (defn usage []
-  (if (.exists (io/file "README.md"))
-    (println-err (slurp "README.md")))
-  (println-err "Valid features: " (map name overlayable-features) "\n"))
+  (println-err "Usage: lein overlay [--overwrite] target [source]")
+  (println-err "  Arguments may be paths, URLs, or specs, e.g. feature[-version]")
+  (println-err "  Supported features:" (map name overlayable-features) "\n"))
